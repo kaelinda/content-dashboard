@@ -1,0 +1,45 @@
+name: Verify Content Hub
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned dependency graph
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit; else npm install --no-audit; fi
+      - name: Verify runtime integrations
+        run: |
+          node --input-type=module -e "import { PGlite } from '@electric-sql/pglite'; import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'; const db=new PGlite(); console.log((await db.query('SELECT version()')).rows); await db.close(); console.log('MCP transport:',typeof WebStandardStreamableHTTPServerTransport);"
+      - name: Typecheck and test
+        if: hashFiles('src/app/page.tsx') != ''
+        run: npm run check
+      - name: Install browser
+        if: hashFiles('playwright.config.ts') != ''
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance
+        if: hashFiles('playwright.config.ts') != ''
+        run: npm run test:e2e
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-evidence
+          path: |
+            package-lock.json
+            playwright-report
+            test-results
+          if-no-files-found: ignore
