@@ -1,0 +1,52 @@
+name: Apply final Content Hub polish
+on:
+  push:
+    branches: ['build/content-hub-v1']
+    paths: ['.github/workflows/polish.yml']
+permissions:
+  contents: write
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/content-hub-v1
+      - name: Apply reviewed targeted changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          def read_checked(name, sha):
+              raw = Path(name).read_bytes()
+              assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == sha
+              return raw.decode()
+          path = 'src/components/workspace.tsx'
+          text = read_checked(path, 'ecb04937c08eaf8b9653db8bd5a8ef2d3ae0c645')
+          old = 'content.excerpt?.replace(content.title, "").trim()'
+          assert text.count(old) == 1
+          text = text.replace(old, 'content.excerpt?.split("\\n").slice(1 + content.tags.length).join(" ").trim()')
+          Path(path).write_text(text)
+          path = 'tests/e2e/workspace.spec.ts'
+          text = read_checked(path, '721b2da1392c483774289cc77f51d418ea1a5b88')
+          old = 'getByLabel("状态", { exact: true })'
+          assert text.count(old) == 1
+          text = text.replace(old, 'getByRole("combobox", { name: "状态", exact: true })')
+          old = '    await page.screenshot({ path: evidence + "/dashboard.png", fullPage: true });'
+          assert text.count(old) == 1
+          text = text.replace(old, '    await expect(page.locator(".content-card").filter({ hasText: "示例 · 把灵感变成可复用的内容资产" }).locator("p")).toContainText("一篇文章");\n' + old)
+          Path(path).write_text(text)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Format changed files
+        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write src/components/workspace.tsx tests/e2e/workspace.spec.ts
+      - name: Commit application and regression checks
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/workspace.tsx tests/e2e/workspace.spec.ts
+          git commit -m 'fix: show body excerpts and verify manual publication end to end'
+          git push origin HEAD:build/content-hub-v1
