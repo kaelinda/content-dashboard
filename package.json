@@ -1,0 +1,30 @@
+{
+  "name": "content-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.16.0" },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/domain.test.ts",
+    "test:integration": "tsx --test tests/integration.test.ts",
+    "test:e2e": "playwright test",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "restore": "tsx scripts/restore.ts",
+    "check": "npm run typecheck && npm test && npm run test:integration && npm run build"
+  },
+  "dependencies": {
+    "next": "16.4.2", "react": "19.3.1", "react-dom": "19.3.1",
+    "@electric-sql/pglite": "^0.3.14", "@modelcontextprotocol/sdk": "1.32.1",
+    "@aws-sdk/client-s3": "^3.911.0", "pg": "^8.16.3", "cheerio": "^1.1.2",
+    "sharp": "^0.35.5", "zod": "^4.1.12", "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3", "@types/node": "^22.18.0", "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0", "@types/pg": "^8.15.5", "tsx": "^4.20.6", "@playwright/test": "^1.56.1"
+  }
+}
