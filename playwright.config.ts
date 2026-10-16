@@ -9,7 +9,6 @@ export default defineConfig({
   retries: 0,
   timeout: 60000,
   reporter: [["list"], ["html", { open: "never" }]],
-  globalSetup: "./tests/e2e/setup.ts",
   use: {
     baseURL: "http://127.0.0.1:3100",
     viewport: { width: 1512, height: 1100 },
@@ -20,7 +19,7 @@ export default defineConfig({
       : {},
   },
   webServer: {
-    command: "npm run start -- --port 3100",
+    command: "node --experimental-strip-types tests/e2e/setup.ts --port 3100",
     url: "http://127.0.0.1:3100/api/health",
     timeout: 120000,
     reuseExistingServer: false,
