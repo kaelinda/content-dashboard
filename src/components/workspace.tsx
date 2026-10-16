@@ -282,8 +282,11 @@ function ContentCard({
       </div>
       <h3>{content.title}</h3>
       <p>
-        {content.excerpt?.replace(content.title, "").trim() ||
-          "这篇内容还在酝酿中。"}
+        {content.excerpt
+          ?.split("\n")
+          .slice(1 + content.tags.length)
+          .join(" ")
+          .trim() || "这篇内容还在酝酿中。"}
       </p>
       <div className="card-tags">
         {content.tags.slice(0, 3).map((tag) => (
