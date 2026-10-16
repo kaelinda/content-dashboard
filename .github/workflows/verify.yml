@@ -13,33 +13,83 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install pinned dependency graph
-        run: |
-          if [ -f package-lock.json ]; then npm ci --no-audit; else npm install --no-audit; fi
-      - name: Verify runtime integrations
-        run: |
-          node --input-type=module -e "import { PGlite } from '@electric-sql/pglite'; import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'; const db=new PGlite(); console.log((await db.query('SELECT version()')).rows); await db.close(); console.log('MCP transport:',typeof WebStandardStreamableHTTPServerTransport);"
-      - name: Typecheck and test
-        if: hashFiles('src/app/page.tsx') != ''
-        run: npm run check
-      - name: Install browser
-        if: hashFiles('playwright.config.ts') != ''
-        run: npx playwright install --with-deps chromium
-      - name: Browser acceptance
-        if: hashFiles('playwright.config.ts') != ''
-        run: npm run test:e2e
-      - name: Upload validation evidence
+          cache: npm
+      - run: npm ci --no-audit
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Package source at tested revision
+        run: git archive --format=zip --prefix=content-dashboard/ -o /tmp/content-dashboard-source.zip HEAD
+      - name: Upload acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: validation-evidence
           path: |
-            package-lock.json
             playwright-report
             test-results
           if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: content-hub-source
+          path: /tmp/content-dashboard-source.zip
+          retention-days: 14
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hub_test
+          POSTGRES_PASSWORD: ci-isolated-test-only
+          POSTGRES_DB: hub_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U hub_test -d hub_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit
+      - name: Run integration suite against external PostgreSQL
+        run: npm run test:integration
+        env:
+          TEST_DATABASE_URL: postgres://hub_test:ci-isolated-test-only@127.0.0.1:5432/hub_test
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create isolated test configuration
+        run: |
+          node scripts/setup.mjs
+          echo 'POSTGRES_PASSWORD=1234567890abcdef1234567890abcdef' >> .env.local
+      - name: Build and start production containers
+        run: docker compose --env-file .env.local up --build --detach --wait --wait-timeout 180
+      - name: Verify live application and private API
+        run: |
+          curl --fail http://127.0.0.1:3000/api/health
+          curl --fail http://127.0.0.1:3000/ > /tmp/page.html
+          grep -q 'Content Hub' /tmp/page.html
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/contents)" = '401'
+      - name: Container diagnostics
+        if: failure()
+        run: docker compose --env-file .env.local logs --no-color
+      - name: Remove isolated test containers
+        if: always()
+        run: docker compose --env-file .env.local down --volumes
