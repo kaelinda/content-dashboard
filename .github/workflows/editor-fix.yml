@@ -1,0 +1,44 @@
+name: Apply reviewed editor correction
+on:
+  push:
+    branches: ['build/content-hub-v1']
+    paths: ['.github/workflows/editor-fix.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/content-hub-v1
+      - name: Apply narrow reviewed changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          path = Path('src/components/editor.tsx')
+          original = path.read_bytes()
+          assert hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest() == '569ed44e332f1a8fef57c70723865ce71bf358a8'
+          body = original.decode()
+          target = '      onSaved(result);\n'
+          assert body.count(target) == 1
+          body = body.replace(target, '      window.history.replaceState({}, "", "/?content=" + encodeURIComponent(result.id));\n' + target)
+          path.write_text(body)
+          test = Path('tests/e2e/workspace.spec.ts')
+          body = test.read_text()
+          assert body.count('test.describe.serial("Real creator workflows",') == 1
+          body = body.replace('test.describe.serial("Real creator workflows",', 'test.describe("Real creator workflows",')
+          target = '    await page.reload();\n'
+          assert body.count(target) == 1
+          body = body.replace(target, '    await expect(page).toHaveURL(/\\?content=/);\n' + target)
+          test.write_text(body)
+          PY
+      - name: Commit corrected source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/editor.tsx tests/e2e/workspace.spec.ts
+          git commit -m 'fix: preserve saved editor location and isolate browser acceptance cases'
+          git push origin HEAD:build/content-hub-v1
