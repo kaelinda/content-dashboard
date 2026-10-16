@@ -25,7 +25,6 @@ jobs:
           parts = sorted(pathlib.Path('.bootstrap').glob('part-*.b64'))
           assert len(parts) == 7
           encoded = b''.join(p.read_bytes() for p in parts)
-          # Repair one identified transfer typo; archive checksum is authoritative.
           encoded = encoded.replace(b'bLKJqt', b'bLKqt')
           data = base64.b64decode(encoded, validate=True)
           assert hashlib.sha256(data).hexdigest() == '6dcb8f62c17b8afac06f81a087c2b2ca15e354d770349d5f79d574842c2523c3'
@@ -33,13 +32,13 @@ jobs:
           PY
           tar -xJf /tmp/content-hub.tar.xz
           rm -rf .bootstrap
-          rm -f .github/workflows/materialize.yml .github/workflows/runtime-cache.yml
       - name: Resolve and lock dependencies
         run: npm install --no-audit
       - name: Format source for maintenance
-        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write 'src/**/*.{ts,tsx,css}' 'scripts/*.{ts,mjs}' 'tests/**/*.ts' '*.{json,ts,md,yaml}' 'docs/*.md' '.github/workflows/*.yml'
+        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write 'src/**/*.{ts,tsx,css}' 'scripts/*.{ts,mjs}' 'tests/**/*.ts' '*.{json,ts,md,yaml}' 'docs/*.md'
       - name: Commit readable application source
         run: |
+          git restore --source=HEAD --staged --worktree .github/workflows
           git config user.name 'Content Hub Builder'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
@@ -47,8 +46,10 @@ jobs:
           git push origin HEAD:build/content-hub-v1
           git rev-parse HEAD
       - name: Package source
+        if: always()
         run: git archive --format=zip --prefix=content-dashboard/ -o /tmp/content-dashboard-source.zip HEAD
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: content-hub-source
           path: /tmp/content-dashboard-source.zip
