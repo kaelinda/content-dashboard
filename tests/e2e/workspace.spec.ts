@@ -14,7 +14,7 @@ async function login(page: Page) {
 async function nav(page: Page, name: string) {
   await page.locator("nav").getByRole("button", { name, exact: true }).click();
 }
-test.describe.serial("Real creator workflows", () => {
+test.describe("Real creator workflows", () => {
   test("owner can log in and create clearly labelled demonstration data", async ({
     page,
     request,
@@ -80,6 +80,7 @@ test.describe.serial("Real creator workflows", () => {
     );
     expect(await page.evaluate(() => "__injected" in window)).toBe(false);
     await page.screenshot({ path: evidence + "/editor.png", fullPage: true });
+    await expect(page).toHaveURL(/\?content=/);
     await page.reload();
     await expect(page.getByLabel("内容标题")).toHaveValue(
       "浏览器验收 · 第一份内容",

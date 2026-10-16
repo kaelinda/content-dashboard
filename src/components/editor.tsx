@@ -208,6 +208,7 @@ export function Editor({
       setSaved(JSON.stringify(draftOf(result)));
       setLoadedVersion(null);
       notice(`已保存为版本 v${result.version}`);
+      window.history.replaceState({}, "", "/?content=" + encodeURIComponent(result.id));
       onSaved(result);
       await onRefresh();
     } catch (e) {
