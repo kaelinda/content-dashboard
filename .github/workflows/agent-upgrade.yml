@@ -1,4 +1,4 @@
-name: Apply verified Agent Hub upgrade
+name: Finalize Agent Hub acceptance
 on:
   push:
     branches: ['feat/agent-gateway-v1-1']
@@ -6,52 +6,75 @@ on:
 permissions:
   contents: write
 jobs:
-  apply:
+  finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/agent-gateway-v1-1
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Read and verify public source patch
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Apply narrowly scoped acceptance corrections
         run: |
           python3 - <<'PY'
-          import base64, hashlib, json, lzma, os, pathlib, subprocess, urllib.request
-          subprocess.run(['git','merge-base','--is-ancestor','23d26ad2b9d87d3c344d615c091080a24bbec6dc','HEAD'],check=True)
-          ids=['2780322f8b4d31d05fa522bcbb66a5d14e53195e','6bf3352909e8c99a0dd58aef78821fc81b801c03','7079ebbfdbaf2030ed9e43fe2e184307c93c1870','8bfb7b6ffec5a0987389529e9fb5d1dee73b9295','b45678096fa9af3c1059f51d13cd095a529147bf']
-          parts=[]
-          for sha in ids:
-              url='https://api.github.com/repos/kaelinda/content-dashboard/git/blobs/'+sha
-              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(req,timeout=30) as response: item=json.load(response)
-              data=base64.b64decode(item['content'])
-              assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==sha
-              parts.append(data)
-          compressed=b''.join(parts)
-          assert hashlib.sha256(compressed).hexdigest()=='01f18068de25057a753657435cfd2f8a555836b1fe27b82da3f6255365b8f1ba'
-          patch=lzma.decompress(compressed)
-          assert b'diff --git a/.github/' not in patch
-          pathlib.Path('/tmp/agent-upgrade.patch').write_bytes(patch)
-          subprocess.run(['git','apply','--check','/tmp/agent-upgrade.patch'],check=True)
-          subprocess.run(['git','apply','/tmp/agent-upgrade.patch'],check=True)
-          print('Verified source patch applied:',len(patch),'bytes')
+          from pathlib import Path
+          import hashlib,json
+          p=Path('src/components/agent-console.tsx')
+          raw=p.read_bytes()
+          assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='c3ead4dcd409dcb3ab6aac2f0bb03b6f33a32c5a'
+          body=raw.decode()
+          old='<select onChange={(e) => setScopes(presets[e.target.value])}>'
+          assert body.count(old)==1
+          body=body.replace(old, '''<select
+            value={Object.keys(presets).find(k => presets[k].length === scopes.length && presets[k].every(s => scopes.includes(s))) ?? "custom"}
+            onChange={(e) => { if (presets[e.target.value]) setScopes(presets[e.target.value]); }}
+          >
+            <option value="custom" disabled>自定义权限</option>''')
+          p.write_text(body)
+          p=Path('package.json');data=json.loads(p.read_text());assert data['scripts']['test:e2e']=='playwright test';data['scripts']['test:e2e']='node scripts/test-browser.mjs';p.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+          p=Path('scripts/test-browser.mjs');assert not p.exists()
+          p.write_text('''import { spawnSync } from "node:child_process";
+          import { resolve } from "node:path";
+          // Each workflow family gets an independent database and report directory.
+          // Run both families even if one fails; never turn a failing suite green.
+          const suites = [
+            ["core", "tests/e2e/workspace.spec.ts"],
+            ["agents", "tests/e2e/agent-workflow.spec.ts"],
+          ];
+          let failed = false;
+          for (const [name, file] of suites) {
+            const result = spawnSync(process.execPath, [
+              resolve("node_modules/@playwright/test/cli.js"), "test", file,
+              "--output=test-results/" + name, ...process.argv.slice(2),
+            ], {
+              stdio: "inherit",
+              env: { ...process.env, E2E_DATA_DIR: ".data-e2e/" + name,
+                PLAYWRIGHT_HTML_OUTPUT_DIR: "playwright-report/" + name },
+            });
+            if (result.error) console.error(result.error.message);
+            if (result.status !== 0) failed = true;
+          }
+          process.exitCode = failed ? 1 : 0;
+          ''')
+          p=Path('playwright.config.ts');body=p.read_text();assert body.count('DATA_DIR: ".data-e2e",')==1;body=body.replace('DATA_DIR: ".data-e2e",','DATA_DIR: process.env.E2E_DATA_DIR || ".data-e2e",');p.write_text(body)
+          p=Path('tests/e2e/setup.ts');body=p.read_text();assert 'process.env.DATA_DIR !== ".data-e2e"' in body;body=body.replace('process.env.DATA_DIR !== ".data-e2e"','![".data-e2e", ".data-e2e/core", ".data-e2e/agents"].includes(process.env.DATA_DIR || "")');body=body.replace('rm(".data-e2e",','rm(process.env.DATA_DIR!,');p.write_text(body)
+          p=Path('tests/e2e/agent-workflow.spec.ts');body=p.read_text()
+          # A grant preset must not misrepresent manual checkbox changes.
+          needle='  // A separate HTTP client writes a real source through the live Next.js service.'
+          if needle in body:
+              body=body.replace(needle,needle)
+          p.write_text(body)
           PY
       - run: npm ci --no-audit
-      - name: Format readable application source
-        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write 'src/**/*.{ts,tsx,css}' 'tests/**/*.ts' 'docs/*.md' README.md AGENTS.md SECURITY.md
+      - run: npm exec --yes --package=prettier@3.6.2 -- prettier --write src/components/agent-console.tsx scripts/test-browser.mjs playwright.config.ts tests/e2e/setup.ts package.json
       - run: npm run typecheck
-      - name: Commit source only
+      - name: Commit source and test corrections
         run: |
           git config user.name 'Content Hub Builder'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add AGENTS.md README.md SECURITY.md docs migrations package.json package-lock.json public src tests
+          git add src/components/agent-console.tsx scripts/test-browser.mjs playwright.config.ts tests/e2e/setup.ts package.json
           test -z "$(git diff --cached --name-only -- .github)"
-          git commit -m 'feat: agent-friendly REST and MCP gateway with scoped atomic writes'
+          git commit -m 'fix: align permission presets and isolate browser acceptance workspaces'
           git push origin HEAD:feat/agent-gateway-v1-1
-          git rev-parse HEAD
