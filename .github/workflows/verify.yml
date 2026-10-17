@@ -31,7 +31,7 @@ jobs:
         run: git archive --format=zip --prefix=content-dashboard/ -o /tmp/content-dashboard-source.zip HEAD
       - name: Upload acceptance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: validation-evidence
           path: |
@@ -39,7 +39,7 @@ jobs:
             test-results
           if-no-files-found: ignore
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: content-hub-source
           path: /tmp/content-dashboard-source.zip
