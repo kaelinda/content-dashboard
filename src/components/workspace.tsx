@@ -58,6 +58,9 @@ import {
 } from "@/lib/domain";
 import { Editor, blankContent } from "./editor";
 import { AgentConsole } from "./agent-console";
+import { StudioOverview } from "./studio";
+import { SourceExplorer, type CaptureMode } from "./source-explorer";
+import { ArtifactExplorer } from "./artifact-explorer";
 import {
   api,
   upload,
@@ -81,13 +84,13 @@ type View =
   | "publications"
   | "settings";
 const nav: { id: View; label: string; icon: LucideIcon }[] = [
-  { id: "overview", label: "总览", icon: LayoutDashboard },
+  { id: "overview", label: "工作台", icon: LayoutDashboard },
+  { id: "agents", label: "Agent 控制台", icon: Activity },
   { id: "contents", label: "内容库", icon: Files },
   { id: "sources", label: "信息源", icon: BookOpen },
   { id: "assets", label: "素材库", icon: ImageIcon },
   { id: "artifacts", label: "产物库", icon: PackageCheck },
   { id: "publications", label: "发布记录", icon: Send },
-  { id: "agents", label: "Agent 控制台", icon: Activity },
   { id: "settings", label: "连接与设置", icon: Plug },
 ];
 const platformNames: Record<string, string> = {
@@ -313,12 +316,14 @@ function SourceImport({
   onClose,
   onDone,
   notice,
+  initialMode = "url",
 }: {
   onClose: () => void;
   onDone: () => Promise<void>;
   notice: Notice;
+  initialMode?: CaptureMode;
 }) {
-  const [mode, setMode] = useState<"url" | "manual" | "file">("url"),
+  const [mode, setMode] = useState<CaptureMode>(initialMode),
     [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -973,6 +978,7 @@ export function Workspace() {
       error: boolean;
       id: number;
     } | null>(null);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("url");
   const [sourceOpen, setSourceOpen] = useState(false),
     [sourceDetail, setSourceDetail] = useState<Source | null>(null),
     [publicationOpen, setPublicationOpen] = useState(false),
@@ -993,6 +999,64 @@ export function Workspace() {
     >([]),
     [searchBusy, setSearchBusy] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
+  const [contentQuery, setContentQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "k" &&
+        !document.querySelector("dialog[open]")
+      ) {
+        e.preventDefault();
+        searchInput.current?.focus();
+      }
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
+  useEffect(() => {
+    if (!navOpen) return;
+    const sidebar = document.getElementById("studio-sidebar");
+    const main = document.querySelector<HTMLElement>(".main-shell");
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    if (main) main.inert = true;
+    const elements = () =>
+      Array.from(
+        sidebar?.querySelectorAll<HTMLElement>(
+          "button:not([disabled]),a[href]",
+        ) ?? [],
+      ).filter((el) => el.getClientRects().length > 0);
+    elements()[0]?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = elements();
+      const first = list[0],
+        last = list.at(-1);
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+    const resize = () => {
+      if (window.innerWidth > 760) setNavOpen(false);
+    };
+    window.addEventListener("keydown", key);
+    window.addEventListener("resize", resize);
+    return () => {
+      if (main) main.inert = false;
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("resize", resize);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [navOpen]);
   const assetInput = useRef<HTMLInputElement>(null);
   const notice = useCallback<Notice>(
     (text, error = false) => setToast({ text, error, id: Date.now() }),
@@ -1072,6 +1136,7 @@ export function Workspace() {
   }
   function navigate(next: View) {
     if (!canLeave()) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
     setEditing(null);
     setDirty(false);
     setView(next);
@@ -1084,6 +1149,7 @@ export function Workspace() {
   }
   async function openContent(id: string) {
     if (!canLeave()) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
     try {
       setEditing(await api<ContentDetail>("contents/" + id));
       setEditorKey((k) => k + 1);
@@ -1097,6 +1163,7 @@ export function Workspace() {
   }
   function createContent(source?: Source) {
     if (!canLeave()) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
     setEditing(blankContent(source));
     setEditorKey((k) => k + 1);
     setDirty(false);
@@ -1237,7 +1304,11 @@ export function Workspace() {
       </div>
     );
   const filtered = data.contents.filter(
-    (c) => statusFilter === "all" || c.status === statusFilter,
+    (c) =>
+      (statusFilter === "all" || c.status === statusFilter) &&
+      `${c.title} ${c.excerpt ?? ""} ${c.tags.join(" ")}`
+        .toLowerCase()
+        .includes(contentQuery.toLowerCase()),
   );
   const currentLabel = nav.find((n) => n.id === view)!.label;
   const stats = [
@@ -1272,19 +1343,30 @@ export function Workspace() {
   ];
   return (
     <div className={"app-shell " + (navOpen ? "nav-open" : "")}>
-      <aside className="sidebar">
+      <aside className="sidebar" id="studio-sidebar">
         <Brand />
-        <button className="workspace-switch">
+        <button
+          className="icon-button mobile-nav-close"
+          aria-label="收起导航"
+          onClick={() => setNavOpen(false)}
+        >
+          <X size={18} />
+        </button>
+        <button
+          className="workspace-switch"
+          onClick={() => navigate("agents")}
+          title="管理项目与 Agent"
+        >
           <span className="avatar">K</span>
           <span>
-            我的创作空间<small>个人工作区</small>
+            个人工作区<small>私有数据中枢</small>
           </span>
           <LockKeyhole size={14} />
         </button>
-        <div className="nav-caption">工作台 / WORKSPACE</div>
+        <div className="nav-caption">WORKSPACE</div>
         <nav aria-label="主导航">
           {nav.map((item, index) => (
-            <div key={item.id} className={index === 6 ? "nav-divider" : ""}>
+            <div key={item.id} className={index === 7 ? "nav-divider" : ""}>
               <button
                 className={view === item.id ? "active" : ""}
                 onClick={() => navigate(item.id)}
@@ -1331,6 +1413,8 @@ export function Workspace() {
           <button
             className="icon-button mobile-menu"
             aria-label="打开导航"
+            aria-expanded={navOpen}
+            aria-controls="studio-sidebar"
             onClick={() => setNavOpen(true)}
           >
             <Menu size={20} />
@@ -1343,6 +1427,7 @@ export function Workspace() {
           <div className="global-search">
             <Search size={16} />
             <input
+              ref={searchInput}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索内容和信息源…"
@@ -1361,7 +1446,7 @@ export function Workspace() {
                 <X size={13} />
               </button>
             ) : (
-              <kbd>⌕</kbd>
+              <kbd>⌘ K</kbd>
             )}
             {search && (
               <div className="search-results">
@@ -1429,269 +1514,24 @@ export function Workspace() {
               onRefresh={refresh}
               notice={notice}
               onDirty={setDirty}
+              onOpenSource={(id) => void openSource(id)}
             />
           ) : (
             <>
               {view === "overview" && (
-                <>
-                  <div className="overview-heading">
-                    <div>
-                      <div className="eyebrow">MAKE ROOM FOR GOOD IDEAS</div>
-                      <h1>
-                        好内容，从这里发生<span>。</span>
-                      </h1>
-                      <p>收集值得记住的信息，把想法变成长期资产。</p>
-                    </div>
-                    <div className="heading-actions">
-                      <button
-                        className="button secondary"
-                        onClick={() => setSourceOpen(true)}
-                      >
-                        <Link2 size={16} />
-                        保存来源
-                      </button>
-                      <button
-                        className="button primary"
-                        onClick={() => createContent()}
-                      >
-                        <Plus size={17} />
-                        新建内容
-                      </button>
-                    </div>
-                  </div>
-                  <div className="stats-grid">
-                    {stats.map((item) => (
-                      <button
-                        className="stat-card"
-                        key={item.label}
-                        onClick={() => navigate(item.target)}
-                      >
-                        <div>
-                          <span>{item.label}</span>
-                          <item.icon size={18} strokeWidth={1.5} />
-                        </div>
-                        <strong>
-                          {item.value.toString().padStart(2, "0")}
-                        </strong>
-                        <small>
-                          {item.note}
-                          <ArrowUpRight size={13} />
-                        </small>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="dashboard-columns">
-                    <section className="dashboard-left">
-                      <div className="section-bar">
-                        <h2>
-                          最近的创作<span>RECENT STORIES</span>
-                        </h2>
-                        <button
-                          className="text-button"
-                          onClick={() => navigate("contents")}
-                        >
-                          全部内容
-                          <ArrowRight size={15} />
-                        </button>
-                      </div>
-                      {data.contents.length ? (
-                        <div className="content-grid overview-grid">
-                          {data.contents.slice(0, 4).map((c) => (
-                            <ContentCard
-                              key={c.id}
-                              content={c}
-                              onOpen={() => void openContent(c.id)}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <section className="panel">
-                          <Empty
-                            title="从第一个想法开始"
-                            description="创建一篇内容，或导入示例了解如何关联来源、留存版本和生成产物。"
-                            action={
-                              <div className="empty-actions">
-                                <button
-                                  className="button primary"
-                                  onClick={() => createContent()}
-                                >
-                                  <Plus size={16} />
-                                  创建第一篇内容
-                                </button>
-                                <button
-                                  className="button secondary"
-                                  disabled={busy}
-                                  onClick={() => void demo()}
-                                >
-                                  {busy ? <Spinner /> : <Layers3 size={16} />}
-                                  导入示例
-                                </button>
-                              </div>
-                            }
-                          />
-                        </section>
-                      )}
-                      <section className="capture-banner">
-                        <span className="capture-icon">
-                          <BookOpen size={29} strokeWidth={1.3} />
-                        </span>
-                        <div>
-                          <h3>遇到值得留下的好资料？</h3>
-                          <p>保存链接背后的原文，而不只是一个书签。</p>
-                        </div>
-                        <button
-                          className="button secondary"
-                          onClick={() => setSourceOpen(true)}
-                        >
-                          收进信息源
-                          <ArrowUpRight size={15} />
-                        </button>
-                      </section>
-                      <div className="section-bar">
-                        <h2>
-                          最近的来源<span>YOUR REFERENCE DESK</span>
-                        </h2>
-                        <button
-                          className="text-button"
-                          onClick={() => navigate("sources")}
-                        >
-                          查看全部
-                          <ArrowRight size={15} />
-                        </button>
-                      </div>
-                      <section className="panel source-mini-list">
-                        {data.sources.length ? (
-                          data.sources.slice(0, 4).map((s) => (
-                            <button
-                              key={s.id}
-                              onClick={() => void openSource(s.id)}
-                            >
-                              <span className="source-initial">
-                                {s.original_url ? (
-                                  new URL(
-                                    s.original_url,
-                                  ).hostname[0].toUpperCase()
-                                ) : (
-                                  <FileText size={16} />
-                                )}
-                              </span>
-                              <span>
-                                <strong>{s.title}</strong>
-                                <small>
-                                  {s.original_url
-                                    ? new URL(s.original_url).hostname
-                                    : "手工 / 文件存档"}{" "}
-                                  · {formatDate(s.fetched_at)}
-                                </small>
-                              </span>
-                              <span className="subtle-badge">快照已存</span>
-                              <ArrowUpRight size={15} />
-                            </button>
-                          ))
-                        ) : (
-                          <div className="quiet-empty">
-                            尚未保存来源。先收集，再创作。
-                          </div>
-                        )}
-                      </section>
-                    </section>
-                    <aside className="dashboard-right">
-                      <section className="panel flow-panel">
-                        <div className="panel-heading">
-                          <h2>一条完整的创作路径</h2>
-                          <span className="tiny-label">WORKFLOW</span>
-                        </div>
-                        <p>
-                          一份内容，多种表达。
-                          <br />
-                          每一步，都有迹可循。
-                        </p>
-                        <div className="flow-steps">
-                          {[
-                            {
-                              n: "01",
-                              label: "收集来源",
-                              desc: "留存原文与快照",
-                              icon: BookOpen,
-                              target: "sources" as View,
-                            },
-                            {
-                              n: "02",
-                              label: "组织内容",
-                              desc: "结构化正文，持续迭代",
-                              icon: FileText,
-                              target: "contents" as View,
-                            },
-                            {
-                              n: "03",
-                              label: "生成产物",
-                              desc: "HTML / Markdown / 分镜",
-                              icon: PackageCheck,
-                              target: "artifacts" as View,
-                            },
-                            {
-                              n: "04",
-                              label: "记录发布",
-                              desc: "连接平台链接与产物",
-                              icon: Send,
-                              target: "publications" as View,
-                            },
-                          ].map((step) => (
-                            <button
-                              key={step.n}
-                              onClick={() => navigate(step.target)}
-                            >
-                              <span className="step-icon">
-                                <step.icon size={17} />
-                              </span>
-                              <span>
-                                <strong>{step.label}</strong>
-                                <small>{step.desc}</small>
-                              </span>
-                              <span className="step-number">{step.n}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flow-footer">
-                          <LockKeyhole size={13} />
-                          凭证不外流，历史不覆盖。
-                        </div>
-                      </section>
-                      <section className="panel activity-panel">
-                        <div className="panel-heading">
-                          <h2>工作区动态</h2>
-                          <Activity size={16} />
-                        </div>
-                        <div className="activity-list">
-                          {data.events.slice(0, 6).map((e) => (
-                            <div key={e.id}>
-                              <span className="activity-dot" />
-                              <div>
-                                <strong>{eventNames[e.type] || e.type}</strong>
-                                <p>
-                                  {typeof e.payload.title === "string"
-                                    ? e.payload.title
-                                    : e.actor === "owner"
-                                      ? "工作区所有者"
-                                      : e.actor}
-                                </p>
-                                <time>{formatDate(e.created_at)}</time>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                      <div className="quiet-quote">
-                        <Leaf size={20} strokeWidth={1.3} />
-                        <p>
-                          创作不必每次从零开始。
-                          <br />
-                          让今天的积累，成为明天的底气。
-                        </p>
-                      </div>
-                    </aside>
-                  </div>
-                </>
+                <StudioOverview
+                  data={data}
+                  navigate={navigate}
+                  openContent={(id) => void openContent(id)}
+                  openSource={(id) => void openSource(id)}
+                  onImport={() => {
+                    setCaptureMode("url");
+                    setSourceOpen(true);
+                  }}
+                  onDemo={() => void demo()}
+                  busy={busy}
+                  notice={notice}
+                />
               )}
               {view === "contents" && (
                 <>
@@ -1709,6 +1549,23 @@ export function Workspace() {
                       新建内容
                     </button>
                   </div>
+                  <label className="studio-search library-search">
+                    <Search size={16} />
+                    <input
+                      aria-label="筛选内容"
+                      placeholder="在已载入内容中筛选标题、摘要或标签…"
+                      value={contentQuery}
+                      onChange={(e) => setContentQuery(e.target.value)}
+                    />
+                    {contentQuery && (
+                      <button
+                        aria-label="清空内容筛选"
+                        onClick={() => setContentQuery("")}
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </label>
                   <div className="collection-toolbar">
                     <div className="filter-tabs">
                       {[
@@ -1853,99 +1710,19 @@ export function Workspace() {
                 </>
               )}
               {view === "sources" && (
-                <>
-                  <div className="section-heading">
-                    <div>
-                      <div className="eyebrow">
-                        KEEP THE ORIGINAL, NOT JUST THE LINK
-                      </div>
-                      <h1>信息源</h1>
-                      <p>给每个论断，保留一条来时的路。</p>
-                    </div>
-                    <button
-                      className="button primary"
-                      onClick={() => setSourceOpen(true)}
-                    >
-                      <Plus size={17} />
-                      保存来源
-                    </button>
-                  </div>
-                  <div className="info-strip">
-                    <ShieldCheck size={18} />
-                    <span>
-                      原始字节快照 + 可检索文本 +
-                      正文引用。即使链接失效，资料依然在这里。
-                    </span>
-                    <span className="tiny-label">TRACEABLE BY DESIGN</span>
-                  </div>
-                  {data.sources.length ? (
-                    <div className="source-grid">
-                      {data.sources.map((s) => (
-                        <button
-                          className="source-card panel"
-                          onClick={() => void openSource(s.id)}
-                          key={s.id}
-                        >
-                          <div className="source-card-top">
-                            <span className="source-initial">
-                              {s.original_url ? (
-                                new URL(
-                                  s.original_url,
-                                ).hostname[0].toUpperCase()
-                              ) : (
-                                <FileText size={18} />
-                              )}
-                            </span>
-                            <span>
-                              {s.original_url
-                                ? new URL(s.original_url).hostname
-                                : "本地归档"}
-                            </span>
-                            <ArrowUpRight size={17} />
-                          </div>
-                          <h3>{s.title}</h3>
-                          <p>{s.markdown.slice(0, 140)}</p>
-                          <div className="source-card-footer">
-                            <span className={"trust trust-" + s.trust_level}>
-                              <i />
-                              {s.trust_level === "high"
-                                ? "高可信"
-                                : s.trust_level === "low"
-                                  ? "待证实"
-                                  : "需验证"}
-                            </span>
-                            <span>{formatDate(s.fetched_at)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <section className="panel">
-                      <Empty
-                        title="让资料不再散落各处"
-                        description="保存公开网页、粘贴原文，或上传 HTML、Markdown、TXT 和 PDF 快照。"
-                        action={
-                          <button
-                            className="button primary"
-                            onClick={() => setSourceOpen(true)}
-                          >
-                            <Link2 size={16} />
-                            保存第一个来源
-                          </button>
-                        }
-                      />
-                    </section>
-                  )}
-                  {data.sources.length >= 100 && (
-                    <button
-                      className="load-more"
-                      onClick={() => void more("sources")}
-                      disabled={busy}
-                    >
-                      加载更多来源
-                    </button>
-                  )}
-                </>
+                <SourceExplorer
+                  data={data}
+                  onImport={(mode) => {
+                    setCaptureMode(mode);
+                    setSourceOpen(true);
+                  }}
+                  onCreate={createContent}
+                  onOpenContent={(id) => void openContent(id)}
+                  onFullSource={(id) => void openSource(id)}
+                  notice={notice}
+                  onMore={() => void more("sources")}
+                  busy={busy}
+                />
               )}
               {view === "assets" && (
                 <>
@@ -2034,117 +1811,20 @@ export function Workspace() {
                 </>
               )}
               {view === "artifacts" && (
-                <>
-                  <div className="section-heading">
-                    <div>
-                      <div className="eyebrow">EXACTLY WHAT YOU CREATED</div>
-                      <h1>产物库</h1>
-                      <p>每一份输出，都是某个内容版本的永久快照。</p>
-                    </div>
-                    <button
-                      className="button secondary"
-                      onClick={() => navigate("contents")}
-                    >
-                      从内容生成
-                      <ArrowRight size={16} />
-                    </button>
-                  </div>
-                  <div className="info-strip">
-                    <LockKeyhole size={18} />
-                    <span>
-                      产物只新增、不覆盖。正文更新后，旧产物会标记为“历史版本”，但始终可以下载。
-                    </span>
-                  </div>
-                  {data.artifacts.length ? (
-                    <div className="artifact-list">
-                      {data.artifacts.map((a) => (
-                        <article className="artifact-card panel" key={a.id}>
-                          <span className={"artifact-icon format-" + a.kind}>
-                            {a.kind === "html" ? (
-                              <Code2 size={25} />
-                            ) : a.kind === "markdown" ? (
-                              <FileText size={25} />
-                            ) : (
-                              <Layers3 size={25} />
-                            )}
-                            <small>{a.kind.toUpperCase()}</small>
-                          </span>
-                          <div className="artifact-info">
-                            <div className="artifact-title">
-                              <h3>{a.title}</h3>
-                              {a.stale && (
-                                <span className="historical">
-                                  正文已有新版本
-                                </span>
-                              )}
-                            </div>
-                            <p>
-                              v{a.content_version} · {a.variant} ·{" "}
-                              {sizeLabel(a.bytes)} · {formatDate(a.created_at)}
-                            </p>
-                            <code>SHA-256 {a.sha256.slice(0, 24)}…</code>
-                          </div>
-                          <div className="artifact-actions">
-                            <button
-                              className="icon-button"
-                              onClick={() => void showArtifact(a)}
-                              aria-label={"预览 " + a.title}
-                            >
-                              <BookOpen size={17} />
-                            </button>
-                            <button
-                              className="button secondary compact"
-                              onClick={() =>
-                                void downloadFile(
-                                  "artifacts/" + a.id + "/download",
-                                ).catch((e) => notice(e.message, true))
-                              }
-                            >
-                              <Download size={15} />
-                              下载
-                            </button>
-                            <button
-                              className="button primary compact"
-                              onClick={() => {
-                                setPublication(null);
-                                setSelectedArtifact(a.id);
-                                setPublicationOpen(true);
-                              }}
-                            >
-                              记录发布
-                              <ArrowUpRight size={14} />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <section className="panel">
-                      <Empty
-                        title="先完成一篇内容，再冻结它的输出"
-                        description="打开内容编辑器，保存正文后选择“生成产物”。可导出 HTML、Markdown、配图提示词或视频分镜。"
-                        action={
-                          <button
-                            className="button primary"
-                            onClick={() => navigate("contents")}
-                          >
-                            前往内容库
-                            <ArrowRight size={16} />
-                          </button>
-                        }
-                      />
-                    </section>
-                  )}
-                  {data.artifacts.length >= 100 && (
-                    <button
-                      className="load-more"
-                      onClick={() => void more("artifacts")}
-                      disabled={busy}
-                    >
-                      加载更多产物
-                    </button>
-                  )}
-                </>
+                <ArtifactExplorer
+                  data={data}
+                  onContent={(id) => void openContent(id)}
+                  onContents={() => navigate("contents")}
+                  onPublication={(id) => {
+                    setPublication(null);
+                    setSelectedArtifact(id);
+                    setPublicationOpen(true);
+                  }}
+                  onPublications={() => navigate("publications")}
+                  notice={notice}
+                  onMore={() => void more("artifacts")}
+                  busy={busy}
+                />
               )}
               {view === "publications" && (
                 <>
@@ -2252,7 +1932,12 @@ export function Workspace() {
                   )}
                 </>
               )}
-              {view === "agents" && <AgentConsole notice={notice} />}
+              {view === "agents" && (
+                <AgentConsole
+                  notice={notice}
+                  onSettings={() => navigate("settings")}
+                />
+              )}
               {view === "settings" && <Settings data={data} notice={notice} />}
             </>
           )}
@@ -2262,7 +1947,8 @@ export function Workspace() {
               私有工作区 · 持久化存储
             </span>
             <span>
-              Content Hub<span className="footer-slash">/</span>让内容成为资产
+              Content Hub<span className="footer-slash">/</span>Agent-first ·
+              Studio
             </span>
           </footer>
         </main>
@@ -2285,6 +1971,7 @@ export function Workspace() {
       )}
       {sourceOpen && (
         <SourceImport
+          initialMode={captureMode}
           onClose={() => setSourceOpen(false)}
           onDone={refresh}
           notice={notice}

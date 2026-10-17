@@ -10,7 +10,7 @@ async function login(page: Page) {
     .fill("Browser-acceptance-synthetic-password");
   await page.getByRole("button", { name: "进入工作台" }).click();
   await expect(
-    page.getByRole("heading", { name: "好内容，从这里发生。" }),
+    page.getByRole("heading", { name: "让 Agent 协作，让数据有据。" }),
   ).toBeVisible();
 }
 
@@ -29,7 +29,7 @@ test("owner configures a scoped agent; real REST and MCP SDK clients exchange da
     .getByRole("button", { name: "Agent 控制台", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "让 Agent 协作，让数据有据。" }),
+    page.getByRole("heading", { name: "项目与权限管理" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "连接新 Agent" }).click();
   const dialog = page.getByRole("dialog");

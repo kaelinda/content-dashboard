@@ -77,8 +77,16 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    ref.current?.showModal();
-    return () => ref.current?.close();
+    const dialog = ref.current;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (previous?.isConnected) previous.focus();
+    };
   }, []);
   return (
     <dialog
@@ -92,6 +100,7 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
       aria-label={title}
+      aria-modal="true"
     >
       <div className="modal-head">
         <h2>{title}</h2>
