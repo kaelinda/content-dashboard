@@ -43,6 +43,7 @@ export function configDefaults(env = process.env) {
     APP_URL: env.APP_URL || "http://localhost:3000",
     OWNER_PASSWORD_HASH: env.OWNER_PASSWORD_HASH || "",
     DATABASE_URL: env.DATABASE_URL || "",
+    HUB_MIGRATIONS: env.HUB_MIGRATIONS || "auto",
     DATA_DIR: env.DATA_DIR || ".data",
     STORAGE_DRIVER: env.STORAGE_DRIVER || "local",
     S3_ENDPOINT: env.S3_ENDPOINT || "",
@@ -114,6 +115,8 @@ export function inspectConfig(env = process.env, options = {}) {
       "OWNER_PASSWORD_HASH",
       "密码哈希格式正确，未输出哈希或密码。",
     );
+  if (!["auto", "verify"].includes(c.HUB_MIGRATIONS))
+    add("error", "MIGRATION_MODE_INVALID", "HUB_MIGRATIONS", "只支持 auto 或 verify；分离运行账号时使用 verify，并在部署阶段执行迁移。");
   if (c.DATABASE_URL && !compose) {
     let valid = false;
     try {

@@ -21,6 +21,7 @@ services:
       OWNER_PASSWORD_HASH: ${OWNER_PASSWORD_HASH:?Initialize OWNER_PASSWORD_HASH with npm run setup}
       DATABASE_URL: postgres://content_hub:${POSTGRES_PASSWORD}@db:5432/content_hub
       DATA_DIR: /app/.data
+      HUB_MIGRATIONS: ${HUB_MIGRATIONS:-auto}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-auto}

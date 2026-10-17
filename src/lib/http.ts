@@ -1,4 +1,5 @@
 import { HubError } from "./domain.ts";
+import { retryAfter } from "./rate-limit.ts";
 export async function readBytes(
   request: Request,
   limit = 1024 * 1024,
@@ -44,7 +45,11 @@ export const json = (
   });
 export function errorResponse(error: unknown) {
   if (error instanceof HubError)
-    return json({ error: error.message }, error.status);
+    return json(
+      { error: error.message, ...(retryAfter(error) ? { retry_after_seconds: retryAfter(error) } : {}) },
+      error.status,
+      retryAfter(error) ? { "Retry-After": String(retryAfter(error)) } : {},
+    );
   console.error(
     "Content Hub operation failed:",
     error instanceof Error ? error.name : "UnknownError",

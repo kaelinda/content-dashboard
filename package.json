@@ -1,6 +1,6 @@
 {
   "name": "content-dashboard",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,7 +13,7 @@
     "start": "node scripts/start.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/domain.test.ts",
-    "test:integration": "tsx --test tests/integration.test.ts && npm run test:agents",
+    "test:integration": "tsx --test tests/integration.test.ts && npm run test:agents && npm run test:operations",
     "test:e2e": "node scripts/test-browser.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "restore": "tsx scripts/restore.ts",
@@ -21,7 +21,10 @@
     "test:agents": "tsx --test tests/agent.test.ts && node --test tests/agent-client.test.mjs",
     "doctor": "node scripts/doctor.mjs",
     "docker:up": "node scripts/compose.mjs",
-    "test:config": "node --test tests/config.test.mjs"
+    "test:config": "node --test tests/config.test.mjs",
+    "test:operations": "tsx --test tests/operations.test.ts",
+    "storage:reconcile": "tsx scripts/reconcile.ts",
+    "audit:dependencies": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "next": "16.4.2",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import { HubError } from "../domain.ts";
+import { retryAfter } from "../rate-limit.ts";
 export class AgentProblem extends HubError {
   code: string;
   context: Record<string, unknown>;
@@ -61,7 +62,7 @@ export function problem(error: unknown, requestId: string = randomUUID()) {
         : "服务暂时无法完成操作。写请求重试必须保留原幂等键。",
     retryable: [429, 500, 502, 503, 504].includes(status),
     request_id: requestId,
-    ...(status === 429 ? { retry_after_seconds: 60 } : {}),
+    ...(status === 429 ? { retry_after_seconds: retryAfter(error) ?? 60 } : {}),
     ...(error instanceof AgentProblem ? error.context : {}),
   };
 }
@@ -73,7 +74,7 @@ export function problemResponse(error: unknown, requestId?: string) {
       "Content-Type": "application/problem+json",
       "Cache-Control": "no-store",
       "X-Request-Id": data.request_id,
-      ...(data.status === 429 ? { "Retry-After": "60" } : {}),
+      ...(data.status === 429 ? { "Retry-After": String(retryAfter(error) ?? 60) } : {}),
     },
   });
 }

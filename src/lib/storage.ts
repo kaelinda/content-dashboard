@@ -103,3 +103,6 @@ export async function getBlob(hash: string): Promise<Buffer> {
     throw new HubError("文件完整性校验失败，请从备份恢复", 500);
   return bytes;
 }
+
+// Shared only by server-side read-only diagnostics.
+export { s3 as storageConnection, key as blobKey };

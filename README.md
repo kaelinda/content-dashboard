@@ -10,6 +10,14 @@
                    网页 / REST       下载 / 私有 MCP
 ```
 
+## V1.2.1 · 可靠性与运维加固
+
+保留 Sage Studio UI 与现有 Agent 契约，补充精确限流等待、安全会话管理与紧急撤销、分级健康检查、脱敏 JSON 访问日志、只读文件对账，以及可选的低权限运行模式。入口：**连接与设置 → 安全与登录会话 / 服务诊断**。
+
+`npm run storage:reconcile -- --verify` 只报告文件异常；PGlite 先停止服务。`HUB_MIGRATIONS=verify` 用于已分离迁移/运行账号的部署，不会自动创建角色。备份恢复仍只进入空库；现有 Token 不因升级自动停用。
+
+范围、风险、命令与验收标准见 [OPERATIONS_HARDENING.md](docs/OPERATIONS_HARDENING.md)。本轮不接自动发布、队列、多租户或用户真实云账号。
+
 ## V1.1.2 · 配置和启动自检
 
 推荐只维护根目录 `.env.local`。开发、生产、迁移与恢复现在使用同一 Next.js 环境解析规则；错误配置在启动前给出字段级提示，诊断不输出密钥值。

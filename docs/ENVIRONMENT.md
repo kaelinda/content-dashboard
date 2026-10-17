@@ -116,3 +116,7 @@ https://nextjs.org/docs/app/guides/environment-variables
 https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/
 
 新增配置测试覆盖解析优先级、test 隔离、美元符号转义、脱敏、首次初始化/已有文件保护、Compose 密码及各启动入口的提前失败。原有数据库、HTTP/MCP SDK、浏览器和 Docker 测试保留，实际通过情况以当前提交的 CI 为准。没有进行真实云账号、VPS 或所有操作系统的联调认证。
+
+## 1.2.1 运行迁移模式
+
+`HUB_MIGRATIONS=auto` 保留兼容行为；`verify` 仅校验已执行迁移的名称和字节摘要，不执行 DDL。迁移使用独立维护进程的 DATABASE_URL 执行 `npm run db:migrate`；运行进程不接收迁移凭证。Compose 转发该变量但不自动建立分离角色，完整流程见 OPERATIONS_HARDENING.md。

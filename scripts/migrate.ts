@@ -7,9 +7,10 @@ try {
   printConfigError(e);
   process.exit(1);
 }
-const { database, closeDatabase } = await import("../src/lib/db.ts");
+const { openDatabase } = await import("../src/lib/db.ts");
+let connection: Awaited<ReturnType<typeof openDatabase>> | undefined;
 try {
-  const db = await database();
+  const db = connection = await openDatabase("auto");
   console.log(`Migrations verified (${db.engine}).`);
 } catch {
   console.error(
@@ -17,5 +18,5 @@ try {
   );
   process.exitCode = 1;
 } finally {
-  await closeDatabase().catch(() => {});
+  await connection?.close().catch(() => {});
 }

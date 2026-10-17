@@ -1,4 +1,6 @@
 import { saveEditorContent } from "./editor-save.ts";
+import { securityHttp } from "./security.ts";
+import { healthHttp } from "./health.ts";
 import { randomUUID } from "node:crypto";
 import { database } from "./db.ts";
 import {
@@ -59,10 +61,8 @@ export async function handle(request: Request): Promise<Response> {
       .filter(Boolean);
     const route = parts[0];
     const method = request.method;
-    if (route === "health" && method === "GET") {
-      await (await database()).query("SELECT 1");
-      return json({ ok: true });
-    }
+    if (route === "health") return healthHttp(request);
+    if (route === "security") return securityHttp(request);
     if (route === "auth" && parts[1] === "status" && method === "GET") {
       let authenticated = false;
       try {

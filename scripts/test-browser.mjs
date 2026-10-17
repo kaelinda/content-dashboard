@@ -6,6 +6,7 @@ const suites = [
   ["core", "tests/e2e/workspace.spec.ts"],
   ["agents", "tests/e2e/agent-workflow.spec.ts"],
   ["studio", "tests/e2e/studio.spec.ts"],
+  ["operations", "tests/e2e/operations.spec.ts"],
 ];
 let failed = false;
 for (const [name, file] of suites) {

@@ -1,3 +1,4 @@
+import { requestTraceId } from "../observability.ts";
 import { validateAgentText } from "./request.ts";
 import { outputSchema } from "./outputs.ts";
 import { randomUUID, createHash } from "node:crypto";
@@ -183,6 +184,7 @@ export async function execute(
   requestId = randomUUID(),
 ) {
   const started = Date.now();
+  let replayed = false;
   let status = contracts[op].method === "POST" ? 201 : 200,
     code: string | null = null;
   try {
@@ -236,6 +238,7 @@ export async function execute(
       typeof data.idempotency_key === "string"
         ? await idempotent(db, p, data.idempotency_key, op, data, action)
         : { data: await action(db), replayed: false };
+    replayed = result.replayed;
     const output = {
       data: result.data,
       meta: {
@@ -253,6 +256,8 @@ export async function execute(
     code = detail.code;
     throw e;
   } finally {
+    // Whitelisted operation fields only, never task input, names, secrets or error messages.
+    try { console.info(JSON.stringify({ timestamp:new Date().toISOString(), event:"agent.operation", request_id:requestId, parent_request_id:requestTraceId(), operation:op, status, code, replayed, duration_ms:Math.max(0,Date.now()-started) })); } catch { /* logging cannot change a committed outcome */ }
     // No bodies, documents, bearer tokens or external credentials are written to access logs.
     try {
       await (

@@ -8,6 +8,7 @@ if (
     ".data-e2e/core",
     ".data-e2e/agents",
     ".data-e2e/studio",
+    ".data-e2e/operations",
   ].includes(process.env.DATA_DIR || "") ||
   process.env.DATABASE_URL ||
   process.env.APP_URL !== "http://127.0.0.1:3100"
