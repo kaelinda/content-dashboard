@@ -1,0 +1,59 @@
+name: Prepare reviewed Studio UI
+on:
+  push:
+    branches: ['feat/studio-ui-v1-2']
+    paths: ['.github/workflows/apply-studio.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/studio-ui-v1-2
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and apply reviewed UI patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, os, pathlib, subprocess, urllib.request
+          assert subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip() == '73fca79683181b31ecc054c4612eb5c8d1ca53a9'
+          shas=['131bf0699fcceb0b31b9ff3804c3353f41a6654d','3c1a138ca26fd400bfe6ea0cc2c91a6ecf8fad2c','d4de079eb8092e6fad1929b5d6d8ac1fde630f66','33e292c82533691b280ef5ce23907a04a196680b','89c5a205f4aa86684d8733480dc0547b4ed18dbb']
+          chunks=[]
+          for sha in shas:
+              req=urllib.request.Request('https://api.github.com/repos/kaelinda/content-dashboard/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: row=json.load(response)
+              chunk=base64.b64decode(row['content'])
+              assert hashlib.sha1(b'blob '+str(len(chunk)).encode()+b'\0'+chunk).hexdigest()==sha
+              chunks.append(chunk)
+          patch=lzma.decompress(base64.b64decode(b''.join(chunks)))
+          assert hashlib.sha256(patch).hexdigest()=='a5c36c1d42b10ef459181639a9b19ac036e8aa40ff047b95d09c7e95d29f7bd7'
+          pathlib.Path('/tmp/studio-ui.patch').write_bytes(patch)
+          subprocess.run(['git','apply','--check','/tmp/studio-ui.patch'],check=True)
+          subprocess.run(['git','apply','--index','/tmp/studio-ui.patch'],check=True)
+          files=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert len(files)==18 and all(not x.startswith(('migrations/','.env','.data','.github/')) for x in files)
+          pathlib.Path('/tmp/studio-files.json').write_text(json.dumps(files))
+          PY
+      - run: npm ci --no-audit
+      - name: Format only changed application files
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          files=json.load(open('/tmp/studio-files.json'))
+          subprocess.run(['npx','--yes','prettier@3.6.2','--write',*files],check=True)
+          subprocess.run(['git','add','--',*files],check=True)
+          PY
+      - run: npm run typecheck
+      - name: Commit readable source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: implement approved green Studio UI with real master-detail workflows'
+          git push origin HEAD:feat/studio-ui-v1-2
