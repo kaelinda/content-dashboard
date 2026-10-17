@@ -1,16 +1,23 @@
 import { randomUUID } from "node:crypto";
-import { readJson, readBytes, binary } from "../http.ts";
+import { readBytes, binary } from "../http.ts";
 import { rateLimit } from "../auth.ts";
 import { contracts, type Operation } from "./contracts.ts";
 import { resolvePrincipal } from "./principal.ts";
 import { execute, uploadFile, download, administer } from "./service.ts";
 import { AgentProblem, problemResponse } from "./problem.ts";
+import {
+  mediaType,
+  readAgentJson,
+  validateQuery,
+  uploadFilename,
+} from "./request.ts";
 export async function agentHttp(request: Request): Promise<Response> {
   const requestId = randomUUID();
   try {
     const url = new URL(request.url),
       path = url.pathname.replace(/^\/api\/v1\/?/, "");
     const p = await resolvePrincipal(request);
+    validateQuery(url);
     await rateLimit("agent:" + p.id, 120, 60);
     const respond = (value: unknown, status = 200) =>
       Response.json(value, {
@@ -18,12 +25,11 @@ export async function agentHttp(request: Request): Promise<Response> {
         headers: { "Cache-Control": "no-store", "X-Request-Id": requestId },
       });
     if (path === "files" && request.method === "POST") {
+      validateQuery(url, ["project_id"]);
       const input = {
         project_id: url.searchParams.get("project_id"),
-        name: request.headers.get("x-filename")
-          ? decodeURIComponent(request.headers.get("x-filename")!)
-          : "",
-        mime: request.headers.get("content-type")?.split(";")[0],
+        name: uploadFilename(request),
+        mime: mediaType(request),
         idempotency_key: request.headers.get("idempotency-key"),
       };
       return respond(
@@ -40,6 +46,7 @@ export async function agentHttp(request: Request): Promise<Response> {
       /^(files|artifacts)\/([A-Za-z0-9_-]{1,64})\/download$/,
     );
     if (dl && request.method === "GET") {
+      validateQuery(url, []);
       const f = await download(
         p,
         dl[1] === "files" ? "file" : "artifact",
@@ -55,11 +62,12 @@ export async function agentHttp(request: Request): Promise<Response> {
       path === "agents" ||
       path.startsWith("agents/")
     ) {
+      validateQuery(url, []);
       const data = await administer(
         p,
         request.method,
         path,
-        request.method === "GET" ? {} : await readJson(request),
+        request.method === "GET" ? {} : await readAgentJson(request),
       );
       return respond(
         { data, meta: { request_id: requestId } },
@@ -95,15 +103,8 @@ export async function agentHttp(request: Request): Promise<Response> {
               : value;
         }
       } else {
-        if (
-          !request.headers.get("content-type")?.startsWith("application/json")
-        )
-          throw new AgentProblem(
-            415,
-            "UNSUPPORTED_MEDIA_TYPE",
-            "请使用 application/json 请求体。",
-          );
-        const body = await readJson(request);
+        validateQuery(url, []);
+        const body = await readAgentJson(request);
         if (!body || typeof body !== "object" || Array.isArray(body))
           throw new AgentProblem(
             422,

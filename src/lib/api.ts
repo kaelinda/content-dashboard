@@ -1,3 +1,4 @@
+import { saveEditorContent } from "./editor-save.ts";
 import { randomUUID } from "node:crypto";
 import { database } from "./db.ts";
 import {
@@ -168,7 +169,7 @@ export async function handle(request: Request): Promise<Response> {
         );
       if (parts.length === 1 && method === "POST")
         return json(
-          await saveContent(await readJson(request), undefined, actor.name),
+          await saveEditorContent(request, await readJson(request), actor.name),
           201,
         );
       if (parts[1]) {
@@ -199,7 +200,12 @@ export async function handle(request: Request): Promise<Response> {
           );
         if (parts.length === 2 && method === "PATCH")
           return json(
-            await saveContent(await readJson(request), id, actor.name),
+            await saveEditorContent(
+              request,
+              await readJson(request),
+              actor.name,
+              id,
+            ),
           );
       }
     }
