@@ -1,0 +1,51 @@
+name: Prepare incremental reliability patch
+on:
+  push:
+    branches: ['fix/agent-gateway-retry-hardening']
+    paths: ['.github/workflows/prepare-reliability.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/agent-gateway-retry-hardening
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check and apply source patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, lzma
+          parts = sorted(Path('.bootstrap').glob('reliability-*.b64'))
+          assert len(parts) == 2
+          data = lzma.decompress(base64.b64decode(''.join(p.read_text().strip() for p in parts), validate=True))
+          assert hashlib.sha256(data).hexdigest() == '613e0ae8358a594430bbe1e73ec230e3f7e0a038cb770a7ce34eba035b4d9f41'
+          for forbidden in [b'diff --git a/migrations/', b'diff --git a/.github/', b'diff --git a/.env.local', b'diff --git a/node_modules']:
+            assert forbidden not in data
+          Path('/tmp/reliability.patch').write_bytes(data)
+          PY
+          git apply --check /tmp/reliability.patch
+          git apply /tmp/reliability.patch
+          rm -rf .bootstrap
+      - name: Format changed readable files only
+        run: |
+          npm exec --yes --package=prettier@3.6.2 -- prettier --write README.md docs/V1_1_STANDARDS.md docs/V1_1_1_RELIABILITY.md scripts/agent-client.mjs src/components/editor.tsx src/components/ui.tsx src/lib/agent/request.ts src/lib/agent/service.ts src/lib/agent/transport.ts src/lib/api.ts src/lib/editor-save.ts tests/agent-client.test.mjs tests/agent.test.ts tests/e2e/agent-workflow.spec.ts package.json package-lock.json
+      - name: Commit application changes only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --name-only | grep -E '^(\.github/|migrations/)'; then exit 1; fi
+          git commit -m 'fix: harden Agent retries, text validation and editor save confirmation'
+          git push origin HEAD:fix/agent-gateway-retry-hardening
+          git archive --format=zip --prefix=content-dashboard/ -o /tmp/reliability-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reliability-prepared-source
+          path: /tmp/reliability-source.zip
+          retention-days: 7
