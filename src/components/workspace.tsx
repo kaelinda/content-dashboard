@@ -56,6 +56,7 @@ import {
   type Asset,
   type Publication,
 } from "@/lib/domain";
+import { AgentConsole } from "./agent-console";
 import { Editor, blankContent } from "./editor";
 import {
   api,
@@ -71,6 +72,7 @@ import {
   type Notice,
 } from "./ui";
 type View =
+  | "agents"
   | "overview"
   | "contents"
   | "sources"
@@ -80,6 +82,7 @@ type View =
   | "settings";
 const nav: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "overview", label: "总览", icon: LayoutDashboard },
+  { id: "agents", label: "Agent 管理台", icon: ShieldCheck },
   { id: "contents", label: "内容库", icon: Files },
   { id: "sources", label: "信息源", icon: BookOpen },
   { id: "assets", label: "素材库", icon: ImageIcon },
@@ -709,6 +712,10 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
           <p>让工具访问内容，让凭证留在服务端。</p>
         </div>
       </div>
+      <div className="inline-note">
+        新增 Agent 建议使用 <a href="/?view=agents">Agent 管理台</a>{" "}
+        分配项目与细分权限。以下为兼容接入，全库令牌不是项目范围令牌。
+      </div>
       <div className="settings-grid">
         <section className="panel settings-panel">
           <div className="panel-heading">
@@ -962,6 +969,7 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
   );
 }
 export function Workspace() {
+  const [editorSession, setEditorSession] = useState(0);
   const [auth, setAuth] = useState<{
       configured: boolean;
       authenticated: boolean;
@@ -1007,7 +1015,8 @@ export function Workspace() {
   );
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 6000);
+    if (toast.error) return;
+    const timer = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
@@ -1089,6 +1098,7 @@ export function Workspace() {
     if (!canLeave()) return;
     try {
       setEditing(await api<ContentDetail>("contents/" + id));
+      setEditorSession((n) => n + 1);
       setDirty(false);
       setView("contents");
       setSearch("");
@@ -1100,6 +1110,7 @@ export function Workspace() {
   function createContent(source?: Source) {
     if (!canLeave()) return;
     setEditing(blankContent(source));
+    setEditorSession((n) => n + 1);
     setDirty(false);
     setView("contents");
     setSourceDetail(null);
@@ -1285,7 +1296,10 @@ export function Workspace() {
         <div className="nav-caption">工作台 / WORKSPACE</div>
         <nav aria-label="主导航">
           {nav.map((item, index) => (
-            <div key={item.id} className={index === 6 ? "nav-divider" : ""}>
+            <div
+              key={item.id}
+              className={item.id === "settings" ? "nav-divider" : ""}
+            >
               <button
                 className={view === item.id ? "active" : ""}
                 onClick={() => navigate(item.id)}
@@ -1421,7 +1435,7 @@ export function Workspace() {
         <main className={"main-content " + (editing ? "with-editor" : "")}>
           {editing ? (
             <Editor
-              key={editing.id || editing.created_at}
+              key={editorSession}
               initial={editing}
               sources={data.sources}
               assets={data.assets}
@@ -2253,6 +2267,7 @@ export function Workspace() {
                   )}
                 </>
               )}
+              {view === "agents" && <AgentConsole notice={notice} />}
               {view === "settings" && <Settings data={data} notice={notice} />}
             </>
           )}

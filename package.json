@@ -1,6 +1,6 @@
 {
   "name": "content-dashboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx scripts/migrate.ts",
     "restore": "tsx scripts/restore.ts",
-    "check": "npm run typecheck && npm test && npm run test:integration && npm run build"
+    "check": "npm run typecheck && npm test && npm run test:integration && npm run test:agents && npm run build",
+    "test:agents": "tsx --test tests/agents.test.ts && node --test tests/agent-client.test.mjs"
   },
   "dependencies": {
     "next": "16.4.2",

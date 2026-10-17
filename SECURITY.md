@@ -26,3 +26,9 @@ Archived pages may contain prompt injection, misinformation, or copyrighted mate
 Browser CSP permits framework-required inline scripts; it is not a nonce-only policy. App rendering avoids injecting untrusted HTML. Network capture has a small extraction scope (UTF-8 HTML/text; no JavaScript rendering); it cannot archive every website.
 
 Security findings should be reported privately to the repository owner. Do not post live credentials, personal content or exploitable private deployment details in public issues.
+
+## V1.1 scoped Agent boundary
+
+New Agent tokens only enter /api/v1 and the scoped MCP dispatcher. They cannot call legacy full-library routes. Projects and operation scopes are checked again before every operation/replay; cross-project blob deduplication never shares metadata. Agent identity comes from the stored principal, not input fields. OAuth compatibility remains read-only.
+
+Original uploaded files are untrusted data. Downloads are attachments with sandbox headers. Source references and client-supplied recipe/model labels are not verified facts. Do not put secrets in content or recipe metadata. Request logs exclude authorization and payload bodies. No penetration-test or full accessibility certification is claimed.

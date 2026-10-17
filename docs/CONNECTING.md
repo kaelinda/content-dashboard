@@ -1,3 +1,5 @@
+> **V1.1 新接入优先阅读 [Agent API](AGENT_API.md)。** 本文保留 V1 全库 REST、只读 MCP/OAuth 的兼容配置；它们不等于项目范围授权。
+
 # 连接 Agent 与 REST
 
 ## 所有者与 Agent 的边界

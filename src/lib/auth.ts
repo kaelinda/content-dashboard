@@ -31,6 +31,8 @@ export type Actor = {
   owner: boolean;
   scopes: string[];
   token: TokenRow;
+  agentId?: string;
+  projectIds?: string[];
 };
 export function cookieValue(request: Request): string {
   return (
@@ -77,7 +79,7 @@ export async function authenticate(
   request: Request,
   write = false,
   ownerOnly = false,
-  transport: "api" | "mcp" = "api",
+  transport: "api" | "mcp" | "v1" = "api",
 ): Promise<Actor> {
   const authorization = request.headers.get("authorization");
   const bearer = authorization?.startsWith("Bearer ")
@@ -93,11 +95,31 @@ export async function authenticate(
     "SELECT * FROM tokens WHERE hash=$1 AND revoked_at IS NULL AND expires_at>now()",
     [digestToken(token)],
   );
+  if (record?.kind === "agent") {
+    if (!bearer || transport === "api")
+      throw new HubError("项目范围令牌仅允许访问 /api/v1 或 /mcp", 403);
+    const [agent] = await (
+      await database()
+    ).query<{ id: string; scopes: string[]; project_ids: string[] }>(
+      "SELECT id,scopes,project_ids FROM hub_agents WHERE id=$1 AND revoked_at IS NULL",
+      [record.meta.agent_id],
+    );
+    if (!agent) throw new HubError("Agent 已撤销或不存在", 401);
+    if (ownerOnly) throw new HubError("仅所有者可以管理授权", 403);
+    return {
+      name: "agent:" + agent.id,
+      owner: false,
+      scopes: agent.scopes,
+      token: record,
+      agentId: agent.id,
+      projectIds: agent.project_ids,
+    };
+  }
   const permitted = bearer
     ? transport === "mcp"
       ? ["api", "access"]
       : ["api"]
-    : transport === "api"
+    : transport !== "mcp"
       ? ["session"]
       : [];
   if (!record || !permitted.includes(record.kind))

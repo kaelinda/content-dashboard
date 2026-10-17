@@ -17,7 +17,9 @@ export async function api<T>(
     .json()
     .catch(() => ({ error: "服务器返回了无效响应" }));
   if (!response.ok)
-    throw new Error(data.error || `请求失败 (${response.status})`);
+    throw new Error(
+      data.detail || data.error || `请求失败 (${response.status})`,
+    );
   return data as T;
 }
 export async function upload<T>(path: string, file: File): Promise<T> {

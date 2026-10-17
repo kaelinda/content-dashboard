@@ -120,7 +120,7 @@ export async function handle(request: Request): Promise<Response> {
         await Promise.all([
           listContents(),
           db.query<Source>(
-            "SELECT id,title,original_url,substring(markdown,1,280) AS markdown,sha256,trust_level,meta,fetched_at FROM sources ORDER BY fetched_at DESC LIMIT 100",
+            "SELECT project_id,id,title,original_url,substring(markdown,1,280) AS markdown,sha256,trust_level,meta,fetched_at FROM sources ORDER BY fetched_at DESC LIMIT 100",
           ),
           db.query<Artifact>(
             "SELECT a.*, (a.content_version<c.current_version) AS stale FROM artifacts a JOIN contents c ON c.id=a.content_id ORDER BY a.created_at DESC LIMIT 100",
@@ -209,7 +209,7 @@ export async function handle(request: Request): Promise<Response> {
           await (
             await database()
           ).query(
-            "SELECT id,title,original_url,substring(markdown,1,280) AS markdown,sha256,trust_level,meta,fetched_at FROM sources WHERE (title||markdown) ILIKE $1 ORDER BY fetched_at DESC LIMIT 100 OFFSET $2",
+            "SELECT project_id,id,title,original_url,substring(markdown,1,280) AS markdown,sha256,trust_level,meta,fetched_at FROM sources WHERE (title||markdown) ILIKE $1 ORDER BY fetched_at DESC LIMIT 100 OFFSET $2",
             [
               "%" +
                 (url.searchParams.get("q") || "")

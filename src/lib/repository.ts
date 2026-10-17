@@ -1,3 +1,8 @@
+import {
+  lockProject,
+  resourceProject,
+  requestContext,
+} from "./agent/context.ts";
 import { randomUUID } from "node:crypto";
 import { database, type Database } from "./db.ts";
 import { getBlob, putBlob } from "./storage.ts";
@@ -29,16 +34,43 @@ export async function event(
     "INSERT INTO events(type,actor,subject_id,payload) VALUES($1,$2,$3,$4::jsonb)",
     [type, actor, id, JSON.stringify(payload)],
   );
+  const kind = type.split(".")[0];
+  const project = id ? await resourceProject(tx, kind, id) : null;
+  if (project) {
+    const [counter] = await tx.query<{ change_seq: string }>(
+      "UPDATE hub_projects SET change_seq=change_seq+1 WHERE id=$1 RETURNING change_seq::text",
+      [project],
+    );
+    await tx.query(
+      "INSERT INTO hub_changes(project_id,seq,type,resource_type,resource_id,version,actor_id,request_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+      [
+        project,
+        counter.change_seq,
+        type,
+        kind,
+        id,
+        typeof payload.version === "number" ? payload.version : null,
+        actor,
+        requestContext.getStore()?.requestId ?? "legacy:" + randomUUID(),
+      ],
+    );
+  }
 }
 export async function saveContent(
   value: unknown,
   id?: string,
   actor = "owner",
+  connection?: Database,
+  projectId = "default",
 ): Promise<ContentDetail> {
   const input = parseContent(value);
-  const db = await database();
+  projectId = input.project_id ?? projectId;
+  const db = connection ?? (await database());
   const contentId = id ? validId(id) : randomUUID();
   return db.transaction(async (tx) => {
+    const project = id ? await resourceProject(tx, "content", id) : projectId;
+    if (!project) throw new HubError("内容不存在", 404);
+    await lockProject(tx, project);
     let version = 1;
     if (id) {
       if (!input.expected_version)
@@ -57,13 +89,21 @@ export async function saveContent(
     }
     for (const sourceId of input.source_ids)
       if (
-        !(await tx.query("SELECT id FROM sources WHERE id=$1", [sourceId]))[0]
+        !(
+          await tx.query(
+            "SELECT id FROM sources WHERE id=$1 AND project_id=$2",
+            [sourceId, project],
+          )
+        )[0]
       )
         throw new HubError("关联来源不存在");
     for (const block of input.blocks.filter((b) => b.type === "image"))
       if (
         !(
-          await tx.query("SELECT id FROM assets WHERE id=$1", [block.asset_id])
+          await tx.query(
+            "SELECT id FROM assets WHERE id=$1 AND project_id=$2",
+            [block.asset_id, project],
+          )
         )[0]
       )
         throw new HubError("图片素材不存在");
@@ -74,8 +114,15 @@ export async function saveContent(
     ].join("\n");
     if (!id)
       await tx.query(
-        "INSERT INTO contents(id,title,status,tags,current_version,search_text) VALUES($1,$2,$3,$4,1,$5)",
-        [contentId, input.title, input.status, input.tags, searchable],
+        "INSERT INTO contents(id,title,status,tags,current_version,search_text,project_id) VALUES($1,$2,$3,$4,1,$5,$6)",
+        [
+          contentId,
+          input.title,
+          input.status,
+          input.tags,
+          searchable,
+          projectId,
+        ],
       );
     else
       await tx.query(
@@ -152,7 +199,7 @@ export async function contentVersions(id: string) {
 }
 export async function listContents(query = "", offset = 0) {
   return (await database()).query<Content>(
-    `SELECT c.id,c.title,c.status,c.tags,c.current_version,c.created_at,c.updated_at,substring(c.search_text,1,180) AS excerpt,(SELECT count(*)::int FROM content_sources s WHERE s.content_id=c.id AND s.version=c.current_version) AS source_count FROM contents c WHERE c.search_text ILIKE $1 ORDER BY c.updated_at DESC LIMIT 100 OFFSET $2`,
+    `SELECT c.project_id,c.id,c.title,c.status,c.tags,c.current_version,c.created_at,c.updated_at,substring(c.search_text,1,180) AS excerpt,(SELECT count(*)::int FROM content_sources s WHERE s.content_id=c.id AND s.version=c.current_version) AS source_count FROM contents c WHERE c.search_text ILIKE $1 ORDER BY c.updated_at DESC LIMIT 100 OFFSET $2`,
     ["%" + query.replace(/[\\%_]/g, "\\$&") + "%", offset],
   );
 }
@@ -175,13 +222,16 @@ export async function saveSource(
     images?: { asset_id: string; origin_url: string; alt: string }[];
   },
   actor = "owner",
+  connection?: Database,
+  projectId = "default",
 ): Promise<Source> {
   const hash = await putBlob(bytes);
-  const db = await database();
+  const db = connection ?? (await database());
   let id = randomUUID() as string;
   await db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
     const inserted = await tx.query<Source>(
-      "INSERT INTO sources(id,title,original_url,sha256,markdown,mime,trust_level,meta) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb) ON CONFLICT(sha256) DO NOTHING RETURNING *",
+      "INSERT INTO sources(id,title,original_url,sha256,markdown,mime,trust_level,meta,project_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) ON CONFLICT(project_id,sha256) DO NOTHING RETURNING *",
       [
         id,
         text(input.title, "标题"),
@@ -191,11 +241,15 @@ export async function saveSource(
         input.mime,
         input.trust ?? "medium",
         JSON.stringify(input.meta ?? {}),
+        projectId,
       ],
     );
     if (!inserted[0])
       id = (
-        await tx.query<Source>("SELECT * FROM sources WHERE sha256=$1", [hash])
+        await tx.query<Source>(
+          "SELECT * FROM sources WHERE sha256=$1 AND project_id=$2",
+          [hash, projectId],
+        )
       )[0].id;
     if (input.url)
       await tx.query(
@@ -215,12 +269,17 @@ export async function saveSource(
       { title: input.title, sha256: hash },
     );
   });
-  return sourceById(id);
+  const [source] = await db.query<Source>("SELECT * FROM sources WHERE id=$1", [
+    id,
+  ]);
+  return source;
 }
 export async function saveAsset(
   bytes: Uint8Array,
   name: string,
   actor = "owner",
+  connection?: Database,
+  projectId = "default",
 ): Promise<Asset> {
   if (bytes.length > 10 * 1024 * 1024)
     throw new HubError("图片最大 10 MB", 413);
@@ -247,10 +306,11 @@ export async function saveAsset(
     .webp({ quality: 88 })
     .toBuffer({ resolveWithObject: true });
   const hash = await putBlob(result.data);
-  const db = await database();
+  const db = connection ?? (await database());
   return db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
     const rows = await tx.query<Asset>(
-      "INSERT INTO assets(id,sha256,mime,bytes,width,height,name) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(sha256) DO NOTHING RETURNING *",
+      "INSERT INTO assets(id,sha256,mime,bytes,width,height,name,project_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(project_id,sha256) DO NOTHING RETURNING *",
       [
         randomUUID(),
         hash,
@@ -259,12 +319,16 @@ export async function saveAsset(
         result.info.width,
         result.info.height,
         name.slice(0, 200),
+        projectId,
       ],
     );
     const asset =
       rows[0] ??
       (
-        await tx.query<Asset>("SELECT * FROM assets WHERE sha256=$1", [hash])
+        await tx.query<Asset>(
+          "SELECT * FROM assets WHERE sha256=$1 AND project_id=$2",
+          [hash, projectId],
+        )
       )[0];
     await event(tx, "asset.saved", actor, asset.id, {
       name: asset.name,
@@ -299,6 +363,9 @@ export async function renderArtifact(
   const bytes = Buffer.from(rendered.body);
   const hash = await putBlob(bytes);
   return db.transaction(async (tx) => {
+    const project = await resourceProject(tx, "content", id);
+    if (!project) throw new HubError("内容不存在", 404);
+    await lockProject(tx, project);
     const rows = await tx.query<Artifact>(
       "INSERT INTO artifacts(id,content_id,content_version,title,kind,variant,sha256,bytes,mime,recipe) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) ON CONFLICT DO NOTHING RETURNING *",
       [
@@ -371,6 +438,9 @@ export async function savePublication(
   const db = await database();
   const pid = id ? validId(id) : randomUUID();
   return db.transaction(async (tx) => {
+    const project = await resourceProject(tx, "artifact", artifactId);
+    if (!project) throw new HubError("产物不存在", 404);
+    await lockProject(tx, project);
     if (
       !(await tx.query("SELECT id FROM artifacts WHERE id=$1", [artifactId]))[0]
     )

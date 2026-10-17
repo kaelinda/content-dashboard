@@ -50,6 +50,7 @@ export function blankContent(source?: Source): ContentDetail {
   const now = new Date().toISOString();
   return {
     id: "",
+    project_id: source?.project_id ?? "default",
     title: source ? source.title : "",
     status: "draft",
     tags: [],
@@ -72,6 +73,7 @@ export function blankContent(source?: Source): ContentDetail {
   };
 }
 const draftOf = (c: ContentDetail): ContentInput => ({
+  project_id: c.project_id ?? "default",
   title: c.title,
   status: c.status,
   tags: c.tags,
@@ -150,6 +152,12 @@ export function Editor({
   notice: Notice;
   onDirty: (dirty: boolean) => void;
 }) {
+  sources = sources.filter(
+    (s) => (s.project_id ?? "default") === (initial.project_id ?? "default"),
+  );
+  assets = assets.filter(
+    (a) => (a.project_id ?? "default") === (initial.project_id ?? "default"),
+  );
   const [record, setRecord] = useState(initial),
     [draft, setDraft] = useState<ContentInput>(draftOf(initial));
   const [saved, setSaved] = useState(JSON.stringify(draftOf(initial))),
@@ -164,6 +172,14 @@ export function Editor({
   const [tagsText, setTagsText] = useState(initial.tags.join(", "));
   const [loadedVersion, setLoadedVersion] = useState<number | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const saveInFlight = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const [deleted, setDeleted] = useState<{
+    block: Block;
+    index: number;
+  } | null>(null);
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const dirty = JSON.stringify(draft) !== saved;
   useEffect(() => {
@@ -191,29 +207,46 @@ export function Editor({
     return () => window.removeEventListener("keydown", fn);
   }, []);
   async function save() {
-    if (busy) return;
+    if (busy || saveInFlight.current) return;
+    const snapshot = draftRef.current;
+    const snapshotKey = JSON.stringify(snapshot);
+    if (record.id && snapshotKey === saved) return;
+    saveInFlight.current = true;
     setBusy(true);
+    setSaveError("");
     try {
       const result = await api<ContentDetail>(
         "contents" + (record.id ? "/" + record.id : ""),
         record.id ? "PATCH" : "POST",
         {
-          ...draft,
+          ...snapshot,
           ...(record.id ? { expected_version: record.current_version } : {}),
         },
       );
       setRecord(result);
-      setDraft(draftOf(result));
-      setTagsText(result.tags.join(", "));
+      // A response only acknowledges its captured snapshot. Never discard newer keystrokes.
+      const unchanged = JSON.stringify(draftRef.current) === snapshotKey;
+      setDraft((current) =>
+        JSON.stringify(current) === snapshotKey ? draftOf(result) : current,
+      );
+      if (unchanged) setTagsText(result.tags.join(", "));
       setSaved(JSON.stringify(draftOf(result)));
       setLoadedVersion(null);
       notice(`已保存为版本 v${result.version}`);
-      window.history.replaceState({}, "", "/?content=" + encodeURIComponent(result.id));
+      window.history.replaceState(
+        {},
+        "",
+        "/?content=" + encodeURIComponent(result.id),
+      );
       onSaved(result);
-      await onRefresh();
+      await onRefresh().catch(() =>
+        notice("正文已保存；工作台统计刷新失败，可稍后重试。", true),
+      );
     } catch (e) {
+      setSaveError((e as Error).message);
       notice((e as Error).message, true);
     } finally {
+      saveInFlight.current = false;
       setBusy(false);
     }
   }
@@ -301,6 +334,7 @@ export function Editor({
       setDraft(draftOf(c));
       setTagsText(c.tags.join(", "));
       setLoadedVersion(version);
+      setDeleted(null);
       setTab("write");
       notice(`已载入 v${version}。保存将创建新版本，不会改写历史。`);
     } catch (e) {
@@ -366,6 +400,45 @@ export function Editor({
           </button>
         </div>
       </div>
+      {saveError && (
+        <div className="editor-save-error" role="alert">
+          <span>保存未完成：{saveError} 当前编辑仍保留在此页面。</span>
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void save()}
+          >
+            重试保存
+          </button>
+        </div>
+      )}
+      {deleted && (
+        <div className="editor-undo" role="status">
+          <span>已移除一个区块。</span>
+          <button
+            className="text-button"
+            onClick={() => {
+              setDraft((d) => {
+                if (d.blocks.some((b) => b.id === deleted.block.id)) return d;
+                const blocks = [...d.blocks];
+                blocks.splice(Math.min(deleted.index, blocks.length), 0, {
+                  ...deleted.block,
+                  source_refs: deleted.block.source_refs.filter((id) =>
+                    d.source_ids.includes(id),
+                  ),
+                });
+                return { ...d, blocks };
+              });
+              setDeleted(null);
+            }}
+          >
+            撤销删除
+          </button>
+          <button className="text-button" onClick={() => setDeleted(null)}>
+            关闭
+          </button>
+        </div>
+      )}
       <div className="editor-layout">
         <section className="editor-main">
           <div className="editor-title">
@@ -523,12 +596,13 @@ export function Editor({
                       <button
                         className="icon-button small danger"
                         aria-label="删除区块"
-                        onClick={() =>
+                        onClick={() => {
+                          setDeleted({ block, index });
                           setDraft((d) => ({
                             ...d,
                             blocks: d.blocks.filter((b) => b.id !== block.id),
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         <Trash2 size={14} />
                       </button>

@@ -1,3 +1,4 @@
+import { scopedMcp } from "@/lib/agent/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       request.headers.get("origin") !== origin()
     )
       throw new HubError("Origin 不被允许", 403);
+    if (actor.agentId) return scopedMcp(request, actor);
     const bytes = await readBytes(request);
     const server = new McpServer({ name: "content-hub", version: "1.0.0" });
     server.registerTool(

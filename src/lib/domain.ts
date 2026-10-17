@@ -24,6 +24,7 @@ export type Block = {
   source_refs: string[];
 };
 export type ContentInput = {
+  project_id?: string;
   title: string;
   status: "draft" | "ready" | "archived";
   tags: string[];
@@ -32,6 +33,7 @@ export type ContentInput = {
   expected_version?: number;
 };
 export type Content = {
+  project_id?: string;
   id: string;
   title: string;
   status: ContentInput["status"];
@@ -48,6 +50,7 @@ export type ContentDetail = Content & {
   source_ids: string[];
 };
 export type Source = {
+  project_id?: string;
   id: string;
   title: string;
   original_url: string | null;
@@ -58,6 +61,7 @@ export type Source = {
   meta: Record<string, unknown>;
 };
 export type Asset = {
+  project_id?: string;
   id: string;
   sha256: string;
   mime: string;
@@ -238,6 +242,7 @@ export function parseContent(value: unknown): ContentInput {
       throw new HubError("版本号无效");
     result.expected_version = version;
   }
+  if (v.project_id !== undefined) result.project_id = validId(v.project_id);
   return result;
 }
 export function escapeHtml(value: string): string {
