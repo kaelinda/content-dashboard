@@ -1,5 +1,6 @@
 import { access, lstat, open, opendir } from "node:fs/promises";
 import { constants } from "node:fs";
+import type { Readable } from "node:stream";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { dataDirectory } from "./db.ts";
@@ -22,6 +23,24 @@ export async function blobMetadata(hash: string) {
         throw new Error("Not a regular blob");
     return { bytes: stat.size, modified_at: stat.mtime.toISOString() };
 }
+/** Bound the body as well as the request; headers alone do not complete a GetObject. */
+export async function hashBlobStream(stream: Readable, maxBytes = 64 * 1024 * 1024, timeoutMs = 10000): Promise<string> {
+    const digest = createHash("sha256");
+    let bytes = 0;
+    const timer = setTimeout(() => stream.destroy(new Error("Blob verification timeout")), timeoutMs);
+    try {
+        for await (const chunk of stream) {
+            const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            bytes += buffer.length;
+            if (bytes > maxBytes) throw new Error("Blob verification limit");
+            digest.update(buffer);
+        }
+        return digest.digest("hex");
+    } finally {
+        clearTimeout(timer);
+        stream.destroy();
+    }
+}
 export async function verifyBlobBytes(hash: string): Promise<boolean> {
     const digest = createHash("sha256");
     const maxBytes = 64 * 1024 * 1024;
@@ -32,20 +51,9 @@ export async function verifyBlobBytes(hash: string): Promise<boolean> {
             const object = await client.send(new sdk.GetObjectCommand({ Bucket: bucket, Key: blobKey(hash) }), { abortSignal: AbortSignal.timeout(10000) });
             if (!object.Body || (object.ContentLength ?? 0) > maxBytes)
                 throw new Error("Blob verification limit");
-            const stream = object.Body as AsyncIterable<Uint8Array> & {
-                destroy?: () => void;
-            };
-            try {
-                for await (const chunk of stream) {
-                    bytes += chunk.length;
-                    if (bytes > maxBytes)
-                        throw new Error("Blob verification limit");
-                    digest.update(chunk);
-                }
-            }
-            finally {
-                stream.destroy?.();
-            }
+            const stream = object.Body as Readable;
+            if (typeof stream.destroy !== "function") throw new Error("Unsupported blob stream");
+            return (await hashBlobStream(stream, maxBytes, 10000)) === hash;
         }
         finally {
             client.destroy();
@@ -120,8 +128,11 @@ export async function listStoredBlobs(limit: number) {
                     complete = false;
                     break;
                 }
-                        if (cursor && (cursors.has(cursor) || Date.now() > deadline)) { complete = false; break; }
-            if (cursor) cursors.add(cursor);
+                if (cursor && (cursors.has(cursor) || Date.now() > deadline)) {
+                    complete = false;
+                    break;
+                }
+                if (cursor) cursors.add(cursor);
             } while (cursor);
         }
         finally {
@@ -130,8 +141,14 @@ export async function listStoredBlobs(limit: number) {
     }
     else {
         const root = join(dataDirectory(), "blobs/sha256");
+        let directory: Awaited<ReturnType<typeof opendir>>;
+        try { directory = await opendir(root); }
+        catch (error) {
+            if (isMissingBlob(error)) return { entries, complete: true, ignored };
+            throw error;
+        }
         try {
-            outer: for await (const folder of await opendir(root)) {
+            outer: for await (const folder of directory) {
                 if (ignored > limit) {
                     complete = false;
                     break;
@@ -163,8 +180,8 @@ export async function listStoredBlobs(limit: number) {
             }
         }
         catch (error) {
-            if (!isMissingBlob(error))
-                throw error;
+            if (!isMissingBlob(error)) throw error;
+            complete = false;
         }
     }
     return { entries: entries.slice(0, limit), complete, ignored };

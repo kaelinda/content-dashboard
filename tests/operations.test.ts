@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile, utimes, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { Readable } from "node:stream";
+import { hashBlobStream } from "../src/lib/storage-inspection.ts";
 import { database, closeDatabase, openDatabase, verifyMigrations } from "../src/lib/db.ts";
 import { issueToken, authenticate } from "../src/lib/auth.ts";
 import { hashPassword, digestToken } from "../src/lib/crypto.ts";
@@ -229,6 +231,17 @@ test("logging failure cannot change a successfully prepared response", async () 
     finally {
         console.info = previous;
     }
+});
+test("blob body verification closes stalled and oversized streams", async () => {
+    const body = Buffer.from("synthetic blob");
+    const normal = Readable.from([body]);
+    assert.equal(await hashBlobStream(normal), createHash("sha256").update(body).digest("hex"));
+    const oversized = Readable.from([body]);
+    await assert.rejects(hashBlobStream(oversized, 1), /limit/);
+    assert.equal(oversized.destroyed, true);
+    const stalled = new Readable({ read() {} });
+    await assert.rejects(hashBlobStream(stalled, 1024, 25), /timeout/);
+    assert.equal(stalled.destroyed, true);
 });
 test("verify mode detects drift without repairing migration records", async () => {
     const db = await database();
