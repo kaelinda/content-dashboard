@@ -24,6 +24,8 @@ jobs:
       - run: npm ci --no-audit
       - run: npm run check
       - run: npx playwright install --with-deps chromium
+      - name: Install system CJK fonts for faithful Chinese UI screenshots
+        run: sudo apt-get install --no-install-recommends -y fonts-noto-cjk
       - run: npm run test:e2e
       - name: Package source at tested revision
         run: git archive --format=zip --prefix=content-dashboard/ -o /tmp/content-dashboard-source.zip HEAD

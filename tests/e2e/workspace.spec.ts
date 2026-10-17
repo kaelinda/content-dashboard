@@ -8,7 +8,7 @@ async function login(page: Page) {
   await page.getByLabel("工作区密码").fill(password);
   await page.getByRole("button", { name: "进入工作台" }).click();
   await expect(
-    page.getByRole("heading", { name: "好内容，从这里发生。" }),
+    page.getByRole("heading", { name: "让 Agent 协作，让数据有据。" }),
   ).toBeVisible();
 }
 async function nav(page: Page, name: string) {
@@ -204,7 +204,7 @@ test.describe("Real creator workflows", () => {
     await page.getByRole("button", { name: /打开导航|菜单|展开导航/ }).click();
     await nav(page, "信息源");
     await expect(
-      page.getByRole("heading", { name: "信息源", exact: true }),
+      page.getByRole("heading", { name: "资料采集中心", exact: true }),
     ).toBeVisible();
     expect(
       await page.evaluate(

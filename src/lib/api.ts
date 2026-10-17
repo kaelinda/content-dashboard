@@ -324,6 +324,10 @@ export async function handle(request: Request): Promise<Response> {
           const db = await database();
           return json({
             ...source,
+            related_contents: await db.query(
+              "SELECT c.id,c.title,c.status,c.current_version,c.updated_at FROM contents c JOIN content_sources cs ON cs.content_id=c.id AND cs.version=c.current_version WHERE cs.source_id=$1 ORDER BY c.updated_at DESC LIMIT 100",
+              [source.id],
+            ),
             locations: await db.query(
               "SELECT url,fetched_at FROM source_locations WHERE source_id=$1",
               [source.id],
