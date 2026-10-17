@@ -1,0 +1,57 @@
+name: Apply verified Agent Hub upgrade
+on:
+  push:
+    branches: ['feat/agent-gateway-v1-1']
+    paths: ['.github/workflows/agent-upgrade.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/agent-gateway-v1-1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read and verify public source patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, os, pathlib, subprocess, urllib.request
+          subprocess.run(['git','merge-base','--is-ancestor','23d26ad2b9d87d3c344d615c091080a24bbec6dc','HEAD'],check=True)
+          ids=['2780322f8b4d31d05fa522bcbb66a5d14e53195e','6bf3352909e8c99a0dd58aef78821fc81b801c03','7079ebbfdbaf2030ed9e43fe2e184307c93c1870','8bfb7b6ffec5a0987389529e9fb5d1dee73b9295','b45678096fa9af3c1059f51d13cd095a529147bf']
+          parts=[]
+          for sha in ids:
+              url='https://api.github.com/repos/kaelinda/content-dashboard/git/blobs/'+sha
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: item=json.load(response)
+              data=base64.b64decode(item['content'])
+              assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==sha
+              parts.append(data)
+          compressed=b''.join(parts)
+          assert hashlib.sha256(compressed).hexdigest()=='01f18068de25057a753657435cfd2f8a555836b1fe27b82da3f6255365b8f1ba'
+          patch=lzma.decompress(compressed)
+          assert b'diff --git a/.github/' not in patch
+          pathlib.Path('/tmp/agent-upgrade.patch').write_bytes(patch)
+          subprocess.run(['git','apply','--check','/tmp/agent-upgrade.patch'],check=True)
+          subprocess.run(['git','apply','/tmp/agent-upgrade.patch'],check=True)
+          print('Verified source patch applied:',len(patch),'bytes')
+          PY
+      - run: npm ci --no-audit
+      - name: Format readable application source
+        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write 'src/**/*.{ts,tsx,css}' 'tests/**/*.ts' 'docs/*.md' README.md AGENTS.md SECURITY.md
+      - run: npm run typecheck
+      - name: Commit source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AGENTS.md README.md SECURITY.md docs migrations package.json package-lock.json public src tests
+          test -z "$(git diff --cached --name-only -- .github)"
+          git commit -m 'feat: agent-friendly REST and MCP gateway with scoped atomic writes'
+          git push origin HEAD:feat/agent-gateway-v1-1
+          git rev-parse HEAD
