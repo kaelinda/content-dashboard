@@ -385,7 +385,22 @@ export function AgentConsole({ notice }: { notice: Notice }) {
             </label>
             <label className="field">
               权限模板
-              <select onChange={(e) => setScopes(presets[e.target.value])}>
+              <select
+                value={
+                  Object.keys(presets).find(
+                    (k) =>
+                      presets[k].length === scopes.length &&
+                      presets[k].every((s) => scopes.includes(s)),
+                  ) ?? "custom"
+                }
+                onChange={(e) => {
+                  if (presets[e.target.value])
+                    setScopes(presets[e.target.value]);
+                }}
+              >
+                <option value="custom" disabled>
+                  自定义权限
+                </option>
                 {Object.keys(presets).map((k) => (
                   <option key={k}>{k}</option>
                 ))}

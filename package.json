@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/domain.test.ts",
     "test:integration": "tsx --test tests/integration.test.ts && npm run test:agents",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/test-browser.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "restore": "tsx scripts/restore.ts",
     "check": "npm run typecheck && npm test && npm run test:integration && npm run build",
