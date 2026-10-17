@@ -15,6 +15,11 @@ import {
   ImagePlus,
   Check,
   ChevronDown,
+  Search,
+  Maximize2,
+  Minimize2,
+  ArrowUpRight,
+  GitCompareArrows,
 } from "lucide-react";
 import {
   type Block,
@@ -140,6 +145,7 @@ export function Editor({
   onRefresh,
   notice,
   onDirty,
+  onOpenSource,
 }: {
   initial: ContentDetail;
   sources: Source[];
@@ -149,7 +155,11 @@ export function Editor({
   onRefresh: () => Promise<void>;
   notice: Notice;
   onDirty: (dirty: boolean) => void;
+  onOpenSource?: (id: string) => void;
 }) {
+  const [focused, setFocused] = useState(false),
+    [sourceQuery, setSourceQuery] = useState(""),
+    [comparison, setComparison] = useState<ContentDetail | null>(null);
   const [record, setRecord] = useState(initial),
     [draft, setDraft] = useState<ContentInput>(draftOf(initial));
   const [saved, setSaved] = useState(JSON.stringify(draftOf(initial))),
@@ -403,9 +413,28 @@ export function Editor({
       setBusy(false);
     }
   }
+  useEffect(() => {
+    const elements = document.querySelectorAll<HTMLTextAreaElement>(
+      ".block-editor > textarea",
+    );
+    elements.forEach((el) => {
+      el.style.height = "auto";
+      el.style.height = Math.max(68, el.scrollHeight) + "px";
+    });
+  }, [draft.blocks, tab, focused]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.querySelector("dialog[open]"))
+        setFocused(false);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
   const wordCount = draft.blocks.reduce((n, b) => n + b.text.length, 0);
   return (
-    <div className="editor-view">
+    <div
+      className={"editor-view studio-editor " + (focused ? "is-focused" : "")}
+    >
       {saveError && (
         <div className="inline-note" role="alert" aria-label="保存失败">
           <div>
@@ -427,6 +456,14 @@ export function Editor({
           返回内容库
         </button>
         <div className="editor-actions">
+          <button
+            className="icon-button focus-toggle"
+            aria-label={focused ? "退出专注模式" : "专注模式"}
+            aria-pressed={focused}
+            onClick={() => setFocused((v) => !v)}
+          >
+            {focused ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
           {deleted.length > 0 && (
             <button className="text-button" onClick={undoDelete}>
               撤销删除
@@ -466,7 +503,7 @@ export function Editor({
       <div className="editor-layout">
         <section className="editor-main">
           <div className="editor-title">
-            <div className="eyebrow">YOUR NEXT GREAT STORY</div>
+            <div className="eyebrow">CONTENT / VERSIONED DOCUMENT</div>
             <input
               value={draft.title}
               onChange={(e) =>
@@ -748,6 +785,19 @@ export function Editor({
                     </p>
                   </div>
                   <button
+                    className="text-button"
+                    onClick={() =>
+                      void api<ContentDetail>(
+                        `contents/${record.id}?version=${v.version}`,
+                      )
+                        .then(setComparison)
+                        .catch((e) => notice(e.message, true))
+                    }
+                  >
+                    <GitCompareArrows size={15} />
+                    对比
+                  </button>
+                  <button
                     className="button secondary compact"
                     onClick={() => void useVersion(v.version)}
                   >
@@ -804,42 +854,57 @@ export function Editor({
               <Link2 size={15} />
               关联来源 <span>{draft.source_ids.length}</span>
             </h3>
-            <p>先关联信息源，再把具体论据挂到正文区块。</p>
+            <p>先关联资料，再将论据挂到对应区块。</p>
+            <label className="studio-search inspector-source-search">
+              <Search size={14} />
+              <input
+                aria-label="筛选引用来源"
+                placeholder="搜索已载入来源…"
+                value={sourceQuery}
+                onChange={(e) => setSourceQuery(e.target.value)}
+              />
+            </label>
             <div className="source-checks">
               {sources.length ? (
-                sources.map((source) => (
-                  <label key={source.id}>
-                    <input
-                      type="checkbox"
-                      checked={draft.source_ids.includes(source.id)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setDraft((d) => ({
-                          ...d,
-                          source_ids: checked
-                            ? [...d.source_ids, source.id]
-                            : d.source_ids.filter((id) => id !== source.id),
-                          blocks: checked
-                            ? d.blocks
-                            : d.blocks.map((b) => ({
-                                ...b,
-                                source_refs: b.source_refs.filter(
-                                  (id) => id !== source.id,
-                                ),
-                              })),
-                        }));
-                      }}
-                    />
-                    <span>
-                      {source.title}
-                      <small>
-                        {source.original_url
-                          ? new URL(source.original_url).hostname
-                          : "手工 / 文件导入"}
-                      </small>
-                    </span>
-                  </label>
-                ))
+                sources
+                  .filter((source) =>
+                    source.title
+                      .toLowerCase()
+                      .includes(sourceQuery.toLowerCase()),
+                  )
+                  .map((source) => (
+                    <label key={source.id}>
+                      <input
+                        type="checkbox"
+                        checked={draft.source_ids.includes(source.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setDraft((d) => ({
+                            ...d,
+                            source_ids: checked
+                              ? [...d.source_ids, source.id]
+                              : d.source_ids.filter((id) => id !== source.id),
+                            blocks: checked
+                              ? d.blocks
+                              : d.blocks.map((b) => ({
+                                  ...b,
+                                  source_refs: b.source_refs.filter(
+                                    (id) => id !== source.id,
+                                  ),
+                                })),
+                          }));
+                        }}
+                      />
+                      <span>
+                        {source.title}
+                        <small>
+                          {source.original_url
+                            ? new URL(source.original_url).hostname
+                            : "手工 / 文件导入"}
+                        </small>
+                      </span>
+                    </label>
+                  ))
               ) : (
                 <div className="inspector-empty">
                   暂时没有来源。可从侧边栏“信息源”导入链接或原文。
@@ -847,6 +912,24 @@ export function Editor({
               )}
             </div>
           </div>
+          {draft.source_ids.length > 0 && onOpenSource && (
+            <div className="inspector-section studio-citation-links">
+              <h3>查看关联原文</h3>
+              {draft.source_ids.map((id, i) => (
+                <button
+                  key={id}
+                  className="studio-citation-link"
+                  onClick={() => onOpenSource(id)}
+                >
+                  <span>{i + 1}</span>
+                  <strong>
+                    {sources.find((s) => s.id === id)?.title ?? "读取来源"}
+                  </strong>
+                  <ArrowUpRight size={14} />
+                </button>
+              ))}
+            </div>
+          )}
           {assets.length > 0 && (
             <div className="inspector-section">
               <h3>
@@ -886,12 +969,36 @@ export function Editor({
           <div className="inspector-tip">
             <span className="tip-dot" />
             <div>
-              <strong>正文是原料，产物是快照。</strong>
+              <strong>正文持续迭代，输出始终留存。</strong>
               <p>修改正文不会覆盖已生成的 HTML、Markdown 或分镜文件。</p>
             </div>
           </div>
         </aside>
       </div>
+      {comparison && (
+        <Modal
+          title={`比较 v${comparison.version} 与当前编辑`}
+          onClose={() => setComparison(null)}
+          wide
+        >
+          <div className="modal-body studio-comparison">
+            <section>
+              <h3>历史版本 v{comparison.version}</h3>
+              <ArticlePreview
+                title={comparison.title}
+                blocks={comparison.blocks}
+              />
+            </section>
+            <section>
+              <h3>当前编辑{dirty ? " · 未保存" : ""}</h3>
+              <ArticlePreview title={draft.title} blocks={draft.blocks} />
+            </section>
+          </div>
+          <p className="studio-panel-footnote">
+            并排展示真实内容，不会覆盖历史版本。
+          </p>
+        </Modal>
+      )}
       {renderOpen && (
         <Modal
           title={rendered ? "产物已冻结" : "从当前版本生成产物"}

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./studio.css";
 export const metadata: Metadata = {
   title: "Content Hub · 内容中枢",
-  description: "你的私有内容工作台。收集信息，沉淀观点，连接每一次创作。",
+  description:
+    "多 Agent 的私有数据工作台。统一资料、内容与输出，管理授权并追溯每一次修改。",
   robots: { index: false, follow: false },
 };
 export default function RootLayout({
