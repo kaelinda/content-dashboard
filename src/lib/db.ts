@@ -12,7 +12,7 @@ export interface Database {
   close(): Promise<void>;
 }
 export const dataDirectory = () => resolve(process.env.DATA_DIR || ".data");
-async function connect(): Promise<Database> {
+async function connect(existingOnly = false): Promise<Database> {
   if (process.env.DATABASE_URL) {
     const { Pool } = await import("pg");
     const pool = new Pool({
@@ -57,7 +57,10 @@ async function connect(): Promise<Database> {
     return db;
   }
   const { PGlite } = await import("@electric-sql/pglite");
-  await mkdir(dataDirectory(), { recursive: true, mode: 0o700 });
+  if (existingOnly) {
+    if (!(await readdir(join(dataDirectory(), "postgres"))).length)
+      throw new Error("Existing database required in verify mode");
+  } else await mkdir(dataDirectory(), { recursive: true, mode: 0o700 });
   const pg = new PGlite(join(dataDirectory(), "postgres"));
   const db: Database = {
     engine: "pglite",
@@ -114,21 +117,43 @@ async function migrate(db: Database) {
     }
   });
 }
+/** Checks exact migration names and bytes, with no CREATE/ALTER statements. */
+export async function verifyMigrations(db: Database): Promise<number> {
+  const root = resolve("migrations");
+  const names = (await readdir(root)).filter(n => /^\d+.*\.sql$/.test(n)).sort();
+  const applied = await db.query<{ name: string; sha256: string }>(
+    "SELECT name,sha256 FROM schema_migrations ORDER BY name",
+  );
+  if (names.length !== applied.length) throw new Error("Schema version mismatch");
+  for (const [i, name] of names.entries()) {
+    const digest = createHash("sha256").update(await readFile(join(root, name))).digest("hex");
+    if (applied[i].name !== name || applied[i].sha256 !== digest)
+      throw new Error("Schema checksum mismatch");
+  }
+  return names.length;
+}
+export type MigrationMode = "auto" | "verify";
+/** Separate connection for maintenance. Callers must close it. */
+export async function openDatabase(mode: MigrationMode = "verify"): Promise<Database> {
+  if (!["auto", "verify"].includes(mode)) throw new Error("Invalid migration mode");
+  const db = await connect(mode === "verify");
+  try {
+    if (mode === "auto") await migrate(db);
+    else await verifyMigrations(db);
+    return db;
+  } catch (error) {
+    await db.close();
+    throw error;
+  }
+}
 const globalDb = globalThis as typeof globalThis & {
   __contentHubDatabase?: Promise<Database>;
 };
 export function database(): Promise<Database> {
   if (!globalDb.__contentHubDatabase)
-    globalDb.__contentHubDatabase = connect()
-      .then(async (db) => {
-        try {
-          await migrate(db);
-          return db;
-        } catch (e) {
-          await db.close();
-          throw e;
-        }
-      })
+    globalDb.__contentHubDatabase = openDatabase(
+      (process.env.HUB_MIGRATIONS || "auto") as MigrationMode,
+    )
       .catch((e) => {
         delete globalDb.__contentHubDatabase;
         throw e;

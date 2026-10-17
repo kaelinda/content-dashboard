@@ -1,4 +1,5 @@
 "use client";
+import { SecurityPanel } from "./security-panel";
 import {
   useCallback,
   useEffect,
@@ -718,6 +719,7 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
         </div>
       </div>
       <div className="settings-grid">
+        <SecurityPanel onChanged={refresh} />
         <section className="panel settings-panel">
           <div className="panel-heading">
             <h2>
@@ -795,7 +797,7 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
           </div>
           <div className="system-row">
             <span>产物与审计历史</span>
-            <strong>数据库级不可修改</strong>
+            <strong>历史写保护（管理员仍受信任）</strong>
           </div>
           <p className="muted">
             备份包含内容、来源快照、素材和发布历史，不包含密码、会话和连接令牌。网页备份上限

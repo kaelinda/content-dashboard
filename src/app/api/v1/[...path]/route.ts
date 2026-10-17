@@ -1,8 +1,10 @@
+import { observeHttp } from "@/lib/observability";
 import { agentHttp } from "@/lib/agent/transport";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const GET = agentHttp,
-  POST = agentHttp,
-  PATCH = agentHttp,
-  PUT = agentHttp,
-  DELETE = agentHttp;
+const observed = (request: Request) => observeHttp(request, agentHttp);
+export const GET = observed,
+  POST = observed,
+  PATCH = observed,
+  PUT = observed,
+  DELETE = observed;

@@ -1,3 +1,4 @@
+import { observeHttp } from "@/lib/observability";
 import { database } from "@/lib/db";
 import { outputSchema } from "@/lib/agent/outputs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -28,7 +29,7 @@ const annotations = {
 const result = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value) }],
 });
-export async function POST(request: Request) {
+async function handleMcp(request: Request) {
   try {
     const principal = await resolvePrincipal(request, "mcp");
     const actor = principal.actor;
@@ -211,3 +212,5 @@ export function GET() {
   );
 }
 export const DELETE = GET;
+
+export const POST = (request: Request) => observeHttp(request, handleMcp);

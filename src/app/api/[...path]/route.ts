@@ -1,8 +1,10 @@
+import { observeHttp } from "@/lib/observability";
 import { handle } from "@/lib/api";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-export const GET = handle;
-export const POST = handle;
-export const PATCH = handle;
-export const DELETE = handle;
+const observed = (request: Request) => observeHttp(request, handle);
+export const GET = observed;
+export const POST = observed;
+export const PATCH = observed;
+export const DELETE = observed;

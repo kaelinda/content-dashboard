@@ -29,7 +29,7 @@ hub.your-domain.example {
 
 Nginx 请求体限制建议 25 MiB（覆盖当前 20 MiB 原文件上限）、代理读取超时至少 120 秒。对外链抓取强烈建议再加基础设施出站策略：禁止 RFC1918、链路本地地址、云元数据地址和内部服务。应用内防护不是独立防火墙的替代。
 
-生产数据库不要公开 5432；账号不能拥有你其他业务的数据库权限。当前自动迁移需要本项目 schema 的 DDL 权限。触发器约束能阻止正常 UPDATE/DELETE，但不能防范拥有 DDL 的恶意管理员；更高保证需分离 migration/runtime 角色并配置存储 Object Lock。
+生产数据库不要公开 5432；账号不能拥有你其他业务的数据库权限。默认 auto 模式自动迁移需要本项目 schema 的 DDL 权限；可改用 HUB_MIGRATIONS=verify，并在部署阶段由独立迁移账号执行 db:migrate（见 OPERATIONS_HARDENING.md）。触发器约束能阻止正常 UPDATE/DELETE，但不能防范拥有 DDL 的恶意管理员；更高保证需分离 migration/runtime 角色并配置存储 Object Lock。
 
 本地 PGlite 不支持两个应用进程共享目录；生产多实例必须使用外部 PostgreSQL 和对象存储。没有共享会话内存依赖，但浏览器/代理的实例数和 S3 客户端并发仍应按实际资源验证。
 
@@ -83,7 +83,7 @@ docker compose --env-file .env.local start app
 
 不要把明文密码写到数据库。生成新的随机密码与 scrypt 哈希可在独立临时目录运行 `node /项目绝对路径/scripts/setup.mjs`，把输出的 OWNER_PASSWORD_HASH 替换到生产 `.env.local` 后重启服务；不要覆盖其他环境配置。
 
-密码哈希变更使旧网页登录会话立即失效。API/OAuth 令牌**不会因为网页登录密码变更而自动撤销**，需要在「连接与设置」逐一撤销；OAuth 同一家族会一并撤销。需要紧急全量撤销时，可由数据库管理员执行：
+密码哈希变更使旧网页登录会话立即失效。API/OAuth 令牌**不会因为网页登录密码变更而自动撤销**，需要在「连接与设置」逐一撤销；OAuth 同一家族会一并撤销。现在可在“连接与设置 → 安全与登录会话”重新验证密码后退出其他会话、停用全部 Agent 或紧急撤销全部访问。需要数据库应急处理时，可由数据库管理员执行：
 
 ```sql
 UPDATE tokens SET revoked_at=now() WHERE revoked_at IS NULL;
@@ -93,11 +93,12 @@ UPDATE tokens SET revoked_at=now() WHERE revoked_at IS NULL;
 
 ## 6. 运维检查
 
-- `/api/health` 只说明进程和数据库可用，不证明 S3、平台发布或外部 MCP 客户端可用。
+- `/api/health/live` 为进程存活；`/api/health` 和 `/api/health/ready` 检查数据库与迁移一致性。所有者可用 `/api/health/diagnostics` 做已有存储对象元信息抽查；不证明全部存储、平台发布或外部 MCP 可用。
 - 定期更新依赖，先在副本跑 `npm run check` 和浏览器测试，再部署。
 - 已执行迁移有 checksum，禁止原地修改；新增迁移文件后部署。
 - 监控磁盘空间、容器健康、数据库备份和证书。没有自动垃圾回收；不要手工删除未知 Blob。
-- 日志只输出异常类型，避免把源文件或 Token 直接写进日志；进一步诊断应在受控环境复现。
+- API/MCP/OAuth 输出白名单 JSON 响应日志，上传/下载也覆盖；只记录模板路由与认证主体，不含请求体、密钥或源文件。stdout 需要部署方收集和设置保留策略。
+- `npm run storage:reconcile -- --verify` 只读检查引用和摘要，不删除疑似孤儿。PGlite 先停服务，S3 清单使用专用维护权限。
 
 ## 7. 尚未配置的外部系统
 

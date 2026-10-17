@@ -1,3 +1,4 @@
+import { logPrincipal } from "./observability.ts";
 import { SCOPES } from "./agent/scopes.ts";
 import { randomUUID } from "node:crypto";
 import { database, type Database } from "./db.ts";
@@ -120,6 +121,7 @@ export async function authenticate(
       digestToken(process.env.OWNER_PASSWORD_HASH || "")
   )
     throw new HubError("密码已轮换，请重新登录", 401);
+  logPrincipal(owner ? "owner" : record.meta.agent_id ? "agent:"+String(record.meta.agent_id) : "token:"+record.id);
   if (ownerOnly && !owner)
     throw new HubError("此操作只能由网页登录的所有者执行", 403);
   if (write && owner) requireOrigin(request);
@@ -149,18 +151,7 @@ export async function authenticate(
     token: record,
   };
 }
-export async function rateLimit(key: string, max: number, seconds: number) {
-  const db = await database();
-  const window = Math.floor(Date.now() / (seconds * 1000)) * seconds * 1000;
-  const [row] = await db.query<{ attempts: number }>(
-    "INSERT INTO rate_limits(key,window_start,attempts) VALUES($1,$2,1) ON CONFLICT(key,window_start) DO UPDATE SET attempts=rate_limits.attempts+1 RETURNING attempts",
-    [digestToken(key), window],
-  );
-  if (row.attempts > max) throw new HubError("请求过于频繁，请稍后重试", 429);
-  await db.query("DELETE FROM rate_limits WHERE window_start<$1", [
-    Date.now() - 86400000,
-  ]);
-}
+export { rateLimit } from "./rate-limit.ts";
 export type OAuthClient = {
   id: string;
   name: string;

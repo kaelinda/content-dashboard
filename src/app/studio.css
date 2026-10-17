@@ -3077,3 +3077,14 @@ button.studio-metric:hover {
     font-size: 12px;
   }
 }
+
+/* Operations controls share the approved Sage Studio typography and surfaces. */
+.security-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+.security-panel .connection-row { gap:12px; }
+.security-panel .connection-row > div { flex:1; min-width:0; }
+.security-panel .connection-row small { overflow-wrap:anywhere; }
+.security-panel .button { min-height:44px; }
+.security-confirm { display:flex; align-items:center; gap:10px; min-height:44px; line-height:1.6; }
+.security-confirm input { width:20px; height:20px; flex-shrink:0; }
+.security-error { color:#8b2e29; background:#fff2ee; padding:12px 16px; border:1px solid #efd0c7; border-radius:10px; overflow-wrap:anywhere; }
+@media(max-width:600px){ .security-actions { flex-direction:column; } .security-panel .connection-row { flex-wrap:wrap; } .security-panel .connection-row .connection-icon { display:none; } .security-panel .connection-row > div { flex-basis:100%; } }

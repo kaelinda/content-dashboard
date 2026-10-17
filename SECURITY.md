@@ -19,7 +19,7 @@ Content Hub is a **single-owner private application**, not a multi-tenant servic
 
 ## Limits and deployment responsibilities
 
-This has automated regression tests, **not an independent security audit**. Database/filesystem administrators remain trusted. Append-only application paths are not regulatory WORM storage or third-party notarization. Runtime currently performs schema migrations and therefore needs DDL access to its isolated schema; high-assurance deployment should separate the migration role.
+This has automated regression tests, **not an independent security audit**. Database/filesystem administrators remain trusted. Append-only application paths are not regulatory WORM storage or third-party notarization. The default auto mode performs schema migrations and needs DDL access to its isolated schema. HUB_MIGRATIONS=verify only validates schema names/checksums; provision a separate non-owner runtime role and run migrations as an independent deployment step. ops/runtime-grants.sql is an explicit grant template, not automatic credential provisioning.
 
 TLS, private bucket/IAM policy, egress firewall, disk/backups encryption, secret provisioning and updates remain deployment responsibilities. Do not put the local PGlite mode on an ephemeral or multi-instance serverless filesystem. Use an external PostgreSQL database and private S3-compatible storage for scaled deployment.
 
@@ -28,3 +28,7 @@ Archived pages may contain prompt injection, misinformation, or copyrighted mate
 Browser CSP permits framework-required inline scripts; it is not a nonce-only policy. App rendering avoids injecting untrusted HTML. Network capture has a small extraction scope (UTF-8 HTML/text; no JavaScript rendering); it cannot archive every website.
 
 Security findings should be reported privately to the repository owner. Do not post live credentials, personal content or exploitable private deployment details in public issues.
+
+## Operational hardening (1.2.1)
+
+Owner-only security controls require exact Origin, current-password reauthentication and an explicit confirmation; revocations and audit events commit together. Revocation does not recall in-flight operations and does not replace rotating a leaked password. Public liveness/readiness expose no infrastructure detail; storage diagnostics require an owner session. Allowlisted JSON access logs never include token plaintext, headers, bodies, titles or arbitrary query strings. Blob reconciliation is report-only and never grants deletion authority. See docs/OPERATIONS_HARDENING.md.
