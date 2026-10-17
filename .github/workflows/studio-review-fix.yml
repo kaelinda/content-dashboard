@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/sage-studio-ui-v1-2
-      - name: Apply exact reviewed changes
+      - name: Apply exact reviewed application changes
         run: |
           python3 - <<'PY'
           import hashlib
@@ -22,7 +22,6 @@ jobs:
               'src/app/studio.css': 'e061c092ca098f4ed6245722670fdb078a727989',
               'src/components/studio/overview.tsx': '474104f28337f172779ed1895876372dde85a3a8',
               'tests/e2e/studio.spec.ts': 'ea255f9e8b2c90e4028b6a34c4b0d2f6d87be5f8',
-              '.github/workflows/verify.yml': 'e4146d7865f670817a4ccd22e9e6b84a65a65d1b',
           }
           bodies = {}
           for name, sha in expected.items():
@@ -65,7 +64,6 @@ jobs:
             expect(tableBounds.overflow).toBeLessThanOrEqual(1);
             await page.locator(".studio-agent-table .studio-identity").first().click();'''
           replace('tests/e2e/studio.spec.ts', before, after)
-          replace('.github/workflows/verify.yml', '      - run: npx playwright install --with-deps chromium\n', '      - run: npx playwright install --with-deps chromium\n      - name: Install system CJK fonts for faithful Chinese UI screenshots\n        run: sudo apt-get install --no-install-recommends -y fonts-noto-cjk\n')
           for name, body in bodies.items():
               Path(name).write_text(body)
           Path('.github/workflows/studio-review-fix.yml').unlink()
@@ -76,6 +74,6 @@ jobs:
         run: |
           git config user.name 'Content Hub Builder'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/app/studio.css src/components/studio/overview.tsx tests/e2e/studio.spec.ts .github/workflows/verify.yml .github/workflows/studio-review-fix.yml
+          git add src/app/studio.css src/components/studio/overview.tsx tests/e2e/studio.spec.ts .github/workflows/studio-review-fix.yml
           git commit -m 'fix: fit Studio tables to cards and verify usable mobile actions'
           git push origin HEAD:feat/sage-studio-ui-v1-2
