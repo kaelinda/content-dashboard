@@ -26,7 +26,7 @@ export default defineConfig({
     env: {
       APP_URL: "http://127.0.0.1:3100",
       OWNER_PASSWORD_HASH: `scrypt:${salt}:${scryptSync(password, salt, 64).toString("hex")}`,
-      DATA_DIR: ".data-e2e",
+      DATA_DIR: process.env.E2E_DATA_DIR || ".data-e2e",
       DATABASE_URL: "",
       STORAGE_DRIVER: "local",
       OAUTH_CLIENTS_JSON: "[]",

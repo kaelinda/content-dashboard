@@ -57,6 +57,7 @@ import {
   type Publication,
 } from "@/lib/domain";
 import { Editor, blankContent } from "./editor";
+import { AgentConsole } from "./agent-console";
 import {
   api,
   upload,
@@ -71,6 +72,7 @@ import {
   type Notice,
 } from "./ui";
 type View =
+  | "agents"
   | "overview"
   | "contents"
   | "sources"
@@ -85,6 +87,7 @@ const nav: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "assets", label: "素材库", icon: ImageIcon },
   { id: "artifacts", label: "产物库", icon: PackageCheck },
   { id: "publications", label: "发布记录", icon: Send },
+  { id: "agents", label: "Agent 控制台", icon: Activity },
   { id: "settings", label: "连接与设置", icon: Plug },
 ];
 const platformNames: Record<string, string> = {
@@ -718,12 +721,12 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
             </h2>
             <span className="badge badge-ready">
               <i />
-              只读工具
+              按授权开放
             </span>
           </div>
           <p className="muted">
-            已提供 search、fetch、list_contents。支持 Bearer 令牌与预注册 OAuth
-            + PKCE。不同客户端的支持范围以实测为准。
+            新 Agent 通过控制台配置项目与读写权限，共用 /api/v1 与 MCP。
+            旧令牌保留兼容只读工具。真实客户端接入范围以实测为准。
           </p>
           <label className="field">
             远程端点
@@ -814,18 +817,11 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
           <div className="panel-heading">
             <h2>
               <KeyRound size={18} />
-              已授权连接
+              连接令牌与撤销
             </h2>
-            <button
-              className="button secondary compact"
-              onClick={() => {
-                setToken("");
-                setShowNew(true);
-              }}
-            >
-              <Plus size={15} />
-              新建令牌
-            </button>
+            <a className="button secondary compact" href="/?view=agents">
+              前往 Agent 控制台
+            </a>
           </div>
           {tokens.length ? (
             <div className="connection-list">
@@ -843,7 +839,7 @@ function Settings({ data, notice }: { data: HubData; notice: Notice }) {
                           ? "OAuth 访问令牌"
                           : "OAuth 刷新令牌"}{" "}
                       ·{" "}
-                      {item.scopes.includes("content:write")
+                      {item.scopes.some((s) => s.endsWith(":write"))
                         ? "允许写入"
                         : "只读"}{" "}
                       · 到期 {formatDate(item.expires_at)}
@@ -996,6 +992,7 @@ export function Workspace() {
       { id: string; type: string; title: string; excerpt: string }[]
     >([]),
     [searchBusy, setSearchBusy] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
   const assetInput = useRef<HTMLInputElement>(null);
   const notice = useCallback<Notice>(
     (text, error = false) => setToast({ text, error, id: Date.now() }),
@@ -1006,7 +1003,7 @@ export function Workspace() {
     [],
   );
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || toast.error) return;
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
   }, [toast]);
@@ -1089,6 +1086,7 @@ export function Workspace() {
     if (!canLeave()) return;
     try {
       setEditing(await api<ContentDetail>("contents/" + id));
+      setEditorKey((k) => k + 1);
       setDirty(false);
       setView("contents");
       setSearch("");
@@ -1100,6 +1098,7 @@ export function Workspace() {
   function createContent(source?: Source) {
     if (!canLeave()) return;
     setEditing(blankContent(source));
+    setEditorKey((k) => k + 1);
     setDirty(false);
     setView("contents");
     setSourceDetail(null);
@@ -1421,7 +1420,7 @@ export function Workspace() {
         <main className={"main-content " + (editing ? "with-editor" : "")}>
           {editing ? (
             <Editor
-              key={editing.id || editing.created_at}
+              key={editorKey}
               initial={editing}
               sources={data.sources}
               assets={data.assets}
@@ -2253,6 +2252,7 @@ export function Workspace() {
                   )}
                 </>
               )}
+              {view === "agents" && <AgentConsole notice={notice} />}
               {view === "settings" && <Settings data={data} notice={notice} />}
             </>
           )}

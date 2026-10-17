@@ -2,13 +2,25 @@
 
 **让每一次创作，都有来处，也有去处。**
 
-面向个人创作者的私有内容工作台。基于 **Next.js App Router + React + TypeScript + PostgreSQL**，把分散的信息来源、结构化正文、派生产物和发布记录串在一起。不是静态页面，也不依赖浏览器 localStorage 保存正文。
+面向多个 AI Agent 的私有内容数据中枢，并为所有者提供核查与纠错工作台。基于 **Next.js App Router + React + TypeScript + PostgreSQL**，把分散的信息来源、结构化正文、派生产物和发布记录串在一起。不是静态页面，也不依赖浏览器 localStorage 保存正文。
 
 ```text
 信息源与原始快照 → 结构化正文 @版本 → 不可变产物 → 发布台账
                        ↑                 ↓
                    网页 / REST       下载 / 私有 MCP
 ```
+
+## V1.1 · Agent-first 升级
+
+**Agent 生产和使用数据，Hub 保存版本与授权，人通过网页检查和纠错。**
+
+新增 `/api/v1`、按 scope 开放的 MCP 写工具、共享输入/输出 Schema 与 OpenAPI、稳定 Agent 身份和项目隔离、事务性幂等回执、区块级并发更新、外部原始文件上传与产物登记、增量变化及 Agent 控制台。
+
+首次接入：网页登录 → **Agent 控制台** → 创建身份/项目授权 → 生成令牌 → 查询 `/api/v1/capabilities`。文档：网页 `/docs/agents`、仓库 [AGENT_API.md](docs/AGENT_API.md)；已落实与未落实的标准见 [V1_1_STANDARDS.md](docs/V1_1_STANDARDS.md)。
+
+升级前先备份，执行 `npm ci` 与 `npm run db:migrate`，不要删除 `.data`。原数据保留在默认项目。新增项目后，旧全库 Bearer token 不再允许使用旧 `/api` 接口；请更换受限 Agent token。OAuth 只有显式配置 Agent 身份并审批 scope 后才允许写入，旧客户端不会自动升级。
+
+不包含后台任务执行器、Webhook、自动发文或真实第三方账号联调。文件格式验证不是恶意软件扫描。
 
 ## 启动使用
 
@@ -46,9 +58,9 @@ npm start
 | 素材库     | 图片上传、重编码 WebP、去除元数据、尺寸记录、正文复用、私有下载                                 |
 | 产物库     | HTML 页面、公众号排版稿、Markdown、配图提示词 JSON、分镜 JSON；确定性渲染、摘要去重、冻结和下载 |
 | 发布台账   | 手动记录对应产物、平台、状态和原文链接；明确区分「登记」和「真正发布」                          |
-| Agent 接入 | 带权限的 REST API Token；只读 MCP Streamable HTTP `search` / `fetch` / `list_contents`          |
+| Agent 接入 | 带权限的 REST API Token；按权限开放 MCP 读写；旧令牌兼容 `search` / `fetch` / `list_contents`   |
 | 授权       | 所有者显式同意、预注册客户端、OAuth 授权码 + PKCE S256、受众验证、refresh token 轮换和复用撤销  |
-| 备份       | 小型库一键导出数据+文件；完整性验证后恢复到空数据库；不导出登录凭证                             |
+| 备份       | 小型库 V2 导出项目/数据/原始文件与幂等回执；恢复身份默认停用，不导出登录凭证                    |
 
 网页集合默认加载最近 100 条，提供加载更多；全局搜索检索正文和来源，不只搜索当前页。PDF **只留存原始字节，不含 OCR/正文抽取**。来源图片采集最多 5 张，失败会明确记录告警。
 

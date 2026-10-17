@@ -64,15 +64,42 @@ export async function exchange(request: Request): Promise<Response> {
         )
           return { error: "invalid_grant" };
       }
+      const client = oauthClients().find((c) => c.id === clientId)!;
+      if (client.agent_id !== record.meta.agent_id)
+        return { error: "invalid_grant" };
+      if (client.agent_id) {
+        const [agent] = await tx.query<{ active: boolean; scopes: string[] }>(
+          "SELECT * FROM agents WHERE id=$1",
+          [client.agent_id],
+        );
+        if (
+          !agent?.active ||
+          record.scopes.some((s) => !agent.scopes.includes(s))
+        )
+          return { error: "invalid_grant" };
+      }
+      const requested = params.has("scope")
+        ? [...new Set((params.get("scope") || "").split(" ").filter(Boolean))]
+        : record.scopes;
+      if (
+        !requested.length ||
+        requested.some((s) => !record.scopes.includes(s))
+      )
+        return { error: "invalid_scope" };
       await tx.query("UPDATE tokens SET revoked_at=now() WHERE id=$1", [
         record.id,
       ]);
       const family = record.meta.family || randomUUID();
-      const meta = { client_id: clientId, resource: origin() + "/mcp", family };
+      const meta = {
+        client_id: clientId,
+        resource: origin() + "/mcp",
+        family,
+        ...(record.meta.agent_id ? { agent_id: record.meta.agent_id } : {}),
+      };
       const access = await issueToken(
         "access",
         clientId,
-        [READ],
+        requested,
         3600,
         meta,
         tx,
@@ -80,7 +107,7 @@ export async function exchange(request: Request): Promise<Response> {
       const refresh = await issueToken(
         "refresh",
         clientId,
-        [READ],
+        requested,
         30 * 86400,
         meta,
         tx,
@@ -90,7 +117,7 @@ export async function exchange(request: Request): Promise<Response> {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: refresh.token,
-        scope: READ,
+        scope: requested.join(" "),
       };
     });
     return json(result, "error" in result ? 400 : 200, { Pragma: "no-cache" });

@@ -166,6 +166,28 @@ export function Editor({
   const imageInput = useRef<HTMLInputElement>(null);
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const dirty = JSON.stringify(draft) !== saved;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const savingRef = useRef(false);
+  const [deleted, setDeleted] = useState<{ block: Block; index: number }[]>([]);
+  function removeBlock(block: Block, index: number) {
+    setDeleted((items) => [...items, { block, index }]);
+    setDraft((d) => ({
+      ...d,
+      blocks: d.blocks.filter((b) => b.id !== block.id),
+    }));
+  }
+  function undoDelete() {
+    const item = deleted.at(-1);
+    if (!item) return;
+    setDraft((d) => {
+      const blocks = [...d.blocks];
+      if (!blocks.some((b) => b.id === item.block.id))
+        blocks.splice(Math.min(item.index, blocks.length), 0, item.block);
+      return { ...d, blocks };
+    });
+    setDeleted((items) => items.slice(0, -1));
+  }
   useEffect(() => {
     onDirty(dirty);
     return () => onDirty(false);
@@ -191,7 +213,9 @@ export function Editor({
     return () => window.removeEventListener("keydown", fn);
   }, []);
   async function save() {
-    if (busy) return;
+    if (busy || savingRef.current || (!dirty && record.id)) return;
+    savingRef.current = true;
+    const submitted = draft;
     setBusy(true);
     try {
       const result = await api<ContentDetail>(
@@ -203,17 +227,25 @@ export function Editor({
         },
       );
       setRecord(result);
-      setDraft(draftOf(result));
-      setTagsText(result.tags.join(", "));
+      // A slow response confirms only its submitted snapshot; never overwrite newer typing.
+      if (draftRef.current === submitted) {
+        setDraft(draftOf(result));
+        setTagsText(result.tags.join(", "));
+      }
       setSaved(JSON.stringify(draftOf(result)));
       setLoadedVersion(null);
       notice(`已保存为版本 v${result.version}`);
-      window.history.replaceState({}, "", "/?content=" + encodeURIComponent(result.id));
+      window.history.replaceState(
+        {},
+        "",
+        "/?content=" + encodeURIComponent(result.id),
+      );
       onSaved(result);
       await onRefresh();
     } catch (e) {
       notice((e as Error).message, true);
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   }
@@ -335,6 +367,11 @@ export function Editor({
           返回内容库
         </button>
         <div className="editor-actions">
+          {deleted.length > 0 && (
+            <button className="text-button" onClick={undoDelete}>
+              撤销删除
+            </button>
+          )}
           <span className={"save-indicator " + (dirty ? "unsaved" : "")}>
             <i />
             {busy
@@ -523,12 +560,7 @@ export function Editor({
                       <button
                         className="icon-button small danger"
                         aria-label="删除区块"
-                        onClick={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            blocks: d.blocks.filter((b) => b.id !== block.id),
-                          }))
-                        }
+                        onClick={() => removeBlock(block, index)}
                       >
                         <Trash2 size={14} />
                       </button>
