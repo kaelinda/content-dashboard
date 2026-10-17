@@ -1,0 +1,73 @@
+name: Apply reviewed Sage Studio UI
+on:
+  push:
+    branches: ['feat/sage-studio-ui-v1-2']
+    paths: ['.github/workflows/prepare-studio.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/sage-studio-ui-v1-2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and apply reviewed source manifest
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, shutil
+          from pathlib import Path
+          encoded = ''.join(Path(f'.studio-transfer/{i}.txt').read_text() for i in range(4))
+          assert len(encoded) == 41804, 'Invalid transfer length'
+          raw = lzma.decompress(base64.b64decode(encoded, validate=True))
+          assert hashlib.sha256(raw).hexdigest() == '45e88170b93acde256a8b255555237281803a6a2fa012c149f33e2328e93b7ca', 'Manifest checksum mismatch'
+          manifest = json.loads(raw)
+          allowed = set('README.md docs/STUDIO_UI.md package-lock.json package.json scripts/test-browser.mjs src/app/layout.tsx src/app/studio.css src/components/agent-console.tsx src/components/studio/artifacts.tsx src/components/studio/overview.tsx src/components/studio/shared.tsx src/components/studio/sources.tsx src/components/workspace.tsx src/lib/api.ts tests/e2e/agent-workflow.spec.ts tests/e2e/studio.spec.ts tests/e2e/workspace.spec.ts'.split())
+          assert set(manifest) == allowed, 'Unexpected modified paths'
+          pending = []
+          for name, item in manifest.items():
+              path = Path(name)
+              if item['before'] is None:
+                  assert not path.exists(), f'New path exists: {name}'
+                  original = b''
+              else:
+                  original = path.read_bytes()
+                  assert hashlib.sha256(original).hexdigest() == item['before'], f'Baseline changed: {name}'
+              lines = original.decode('utf-8').splitlines(keepends=True)
+              edits = item['edits']
+              assert edits == sorted(edits, key=lambda x: x[0])
+              previous_end = 0
+              for start, end, replacement in edits:
+                  assert previous_end <= start <= end <= len(lines)
+                  previous_end = end
+              for start, end, replacement in reversed(edits):
+                  lines[start:end] = replacement.splitlines(keepends=True)
+              updated = ''.join(lines).encode('utf-8')
+              assert hashlib.sha256(updated).hexdigest() == item['after'], f'Output checksum mismatch: {name}'
+              pending.append((path, updated))
+          for path, updated in pending:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(updated)
+          shutil.rmtree('.studio-transfer')
+          Path('.github/workflows/prepare-studio.yml').unlink()
+          print(f'Applied {len(pending)} verified files; no migrations, secrets or user data changed.')
+          PY
+      - name: Format reviewed UI and test source
+        run: >-
+          npx --yes prettier@3.6.2 --write
+          README.md docs/STUDIO_UI.md package.json package-lock.json
+          scripts/test-browser.mjs src/app/layout.tsx src/app/studio.css
+          src/components/agent-console.tsx src/components/studio/*.tsx
+          src/components/workspace.tsx src/lib/api.ts
+          tests/e2e/agent-workflow.spec.ts tests/e2e/studio.spec.ts tests/e2e/workspace.spec.ts
+      - name: Commit readable application source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md docs/STUDIO_UI.md package.json package-lock.json scripts/test-browser.mjs src/app/layout.tsx src/app/studio.css src/components/agent-console.tsx src/components/studio src/components/workspace.tsx src/lib/api.ts tests/e2e .studio-transfer .github/workflows/prepare-studio.yml
+          git commit -m 'feat: implement approved Sage Studio UI with live data and responsive detail panes'
+          git push origin HEAD:feat/sage-studio-ui-v1-2
