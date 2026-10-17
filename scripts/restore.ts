@@ -1,5 +1,13 @@
-import { readFileSync, existsSync, statSync } from "node:fs";
-if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+import { readFileSync, statSync } from "node:fs";
+import { loadHubEnv } from "./lib/environment.mjs";
+import { assertConfig, printConfigError } from "../src/lib/config.mjs";
+try {
+  loadHubEnv(process.env.NODE_ENV || "production");
+  assertConfig();
+} catch (e) {
+  printConfigError(e);
+  process.exit(1);
+}
 const file = process.argv[2];
 if (!file) {
   console.error("Usage: npm run restore -- /path/to/backup.json");

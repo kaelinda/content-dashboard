@@ -10,6 +10,24 @@
                    网页 / REST       下载 / 私有 MCP
 ```
 
+## V1.1.2 · 配置和启动自检
+
+推荐只维护根目录 `.env.local`。开发、生产、迁移与恢复现在使用同一 Next.js 环境解析规则；错误配置在启动前给出字段级提示，诊断不输出密钥值。
+
+```bash
+# 首次本机安装
+npm ci
+npm run setup
+npm run doctor
+npm run dev
+```
+
+已有安装保留数据与配置，不重跑 setup；先备份和停止应用，再 `npm ci`、`npm run doctor`、`npm run db:migrate`、构建启动。
+
+全新 Docker 安装可用 `npm run setup -- --docker`，然后 `npm run doctor -- --compose` 和 `npm run docker:up`。`npm run --silent doctor -- --json` 提供机器可读结果；自检不连接数据库或 S3，也不证明域名/账号已接通。
+
+完整变量、加载顺序、特殊字符与部署区别见 [ENVIRONMENT.md](docs/ENVIRONMENT.md)。
+
 ## V1.1 · Agent-first 升级
 
 **Agent 生产和使用数据，Hub 保存版本与授权，人通过网页检查和纠错。**
