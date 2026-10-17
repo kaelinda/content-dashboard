@@ -243,7 +243,7 @@ export function StudioOverview({
         </section>
         <section className="studio-panel capability-panel">
           <PanelHeading
-            title={selected ? "已选 Agent 的能力" : "从最小权限开始"}
+            title={selected ? "授权能力预览" : "从最小权限开始"}
             action={<KeyRound size={17} />}
           />
           {selected && (

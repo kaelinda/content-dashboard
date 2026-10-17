@@ -57,6 +57,36 @@ test.beforeAll(async ({ request, baseURL }) => {
     data: { password: "Browser-acceptance-synthetic-password" },
   });
   expect(loginResponse.ok()).toBe(true);
+  // A failed case restarts its Playwright worker, not the application.
+  // Reuse the complete fixture graph instead of duplicating prior writes.
+  const snapshotResponse = await request.get("/api/hub");
+  expect(snapshotResponse.ok()).toBe(true);
+  const snapshot = (await snapshotResponse.json()) as {
+    contents: { id: string; title: string }[];
+    sources: { id: string; title: string }[];
+    artifacts: { id: string; variant: string }[];
+  };
+  if (snapshot.contents.length) {
+    contentIds = titles.map(
+      (title) => snapshot.contents.find((c) => c.title === title)?.id ?? "",
+    );
+    sourceIds = [
+      "示例 · Agent 接入规范",
+      "示例 · 团队知识整理笔记",
+      "示例 · 版本与追溯设计",
+      "示例 · 发布流程检查表",
+      "示例 · 开放接口参考",
+      "示例 · 资料复用实践",
+    ].map((title) => snapshot.sources.find((s) => s.title === title)?.id ?? "");
+    selectedHtmlId =
+      snapshot.artifacts.find((a) => a.variant === "studio-demo")?.id ?? "";
+    expect(
+      contentIds.every(Boolean) && sourceIds.every(Boolean) && !!selectedHtmlId,
+      "Complete isolated Studio fixture must be reusable",
+    ).toBe(true);
+    expect(snapshot.contents).toHaveLength(6);
+    return;
+  }
   async function write(path: string, data: unknown) {
     const response = await request.post(path, {
       headers: { Origin: baseURL! },
@@ -330,7 +360,7 @@ test("source filters, full-text detail, retry and related-content navigation are
     .locator(".source-select")
     .filter({ hasText: "示例 · 开放接口参考" })
     .click();
-  await expect(page.getByRole("alert")).toContainText("暂时不可用");
+  await expect(detail.getByRole("alert")).toContainText("暂时不可用");
   await page.getByRole("button", { name: "重试读取", exact: true }).click();
   await expect(page.locator(".source-excerpt")).toContainText("UI 验收");
 });
@@ -428,6 +458,18 @@ test("mobile master-detail views and keyboard navigation retain usable targets",
     fullPage: true,
     animations: "disabled",
   });
+  const tableBounds = await page
+    .locator(".studio-agent-table")
+    .evaluate((table) => {
+      const container = table.parentElement!;
+      return {
+        table: table.getBoundingClientRect().width,
+        container: container.clientWidth,
+        overflow: container.scrollWidth - container.clientWidth,
+      };
+    });
+  expect(tableBounds.table).toBeLessThanOrEqual(tableBounds.container + 1);
+  expect(tableBounds.overflow).toBeLessThanOrEqual(1);
   await page.locator(".studio-agent-table .studio-identity").first().click();
   await expect(
     page.getByRole("button", { name: "返回 Agent 列表", exact: true }),

@@ -570,6 +570,7 @@ button.studio-metric:hover {
   overscroll-behavior-x: contain;
 }
 .studio-table {
+  min-width: 0;
   border-collapse: collapse;
   width: 100%;
   table-layout: auto;
