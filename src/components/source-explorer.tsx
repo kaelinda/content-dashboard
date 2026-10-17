@@ -168,6 +168,8 @@ export function SourceExplorer({
         ].map((a) => (
           <button
             className="studio-capture"
+            aria-label={a.title}
+            aria-description={a.sub}
             key={a.mode}
             onClick={() => onImport(a.mode)}
           >

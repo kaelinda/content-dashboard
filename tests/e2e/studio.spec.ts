@@ -5,7 +5,7 @@ import {
   type APIRequestContext,
 } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const password = "Browser-acceptance-synthetic-password";
 const refs: {
@@ -58,6 +58,18 @@ async function shot(page: Page, name: string) {
 test.beforeAll(async ({ request, baseURL }) => {
   const origin = baseURL!;
   await json(request, "/api/auth/login", { password }, origin);
+  // A restarted worker reuses the completed synthetic fixture, not duplicate data.
+  const fixturePath = "test-results/.studio-fixture.json";
+  try {
+    const cached = JSON.parse(await readFile(fixturePath, "utf8"));
+    const existing = await request.get("/api/contents/" + cached.content);
+    if (existing.ok()) {
+      Object.assign(refs, cached);
+      return;
+    }
+  } catch {
+    /* No fixture in this isolated database yet. */
+  }
   const sources = [];
   for (const [i, title] of [
     "示例 · 多 Agent 数据协作笔记",
@@ -209,6 +221,7 @@ test.beforeAll(async ({ request, baseURL }) => {
     },
     origin,
   );
+  await writeFile(fixturePath, JSON.stringify(refs));
 });
 
 test("overview uses actual owner aggregates and keyboard search; anonymous/scoped access cannot read studio", async ({
@@ -392,6 +405,24 @@ test("all redesigned pages reflow at phone/tablet widths; mobile navigation trap
       ),
       label,
     ).toBe(true);
+    if (label === "Agent 控制台") {
+      await expect(page.locator(".studio-grants-table tbody tr")).toHaveCount(
+        3,
+      );
+      const table = page.locator(".studio-grants-table");
+      expect(
+        await table.evaluate(
+          (el) =>
+            el.getBoundingClientRect().width <= el.parentElement!.clientWidth,
+        ),
+      ).toBe(true);
+      expect(
+        await table
+          .locator("tbody td")
+          .first()
+          .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+      ).toBeGreaterThanOrEqual(12);
+    }
     await shot(
       page,
       label === "Agent 控制台"

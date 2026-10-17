@@ -140,7 +140,7 @@ textarea:focus-visible {
   letter-spacing: -0.4px;
 }
 .brand small {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   color: #a7beaf;
   margin-top: 3px;
@@ -170,7 +170,7 @@ textarea:focus-visible {
   font-size: 12px;
 }
 .workspace-switch small {
-  font-size: 10px;
+  font-size: 12px;
   color: #a7beaf;
 }
 .workspace-switch .avatar {
@@ -183,7 +183,7 @@ textarea:focus-visible {
   color: #a5b8ad;
 }
 .nav-caption {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.6px;
   color: #94b2a1;
   padding-left: 12px;
@@ -226,7 +226,7 @@ textarea:focus-visible {
 .sidebar nav button small {
   background: #ffffff14;
   color: #d2e6d8;
-  font-size: 10px;
+  font-size: 12px;
 }
 .nav-divider {
   margin-top: 25px;
@@ -238,7 +238,7 @@ textarea:focus-visible {
 }
 .private-note {
   color: #e0ece3;
-  font-size: 11px;
+  font-size: 12px;
   border-color: #cce4d422;
   background: #ffffff04;
   border-radius: 11px;
@@ -248,7 +248,7 @@ textarea:focus-visible {
   color: #b4d4ba;
 }
 .private-note small {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
   color: #adc4b5;
 }
@@ -256,11 +256,11 @@ textarea:focus-visible {
   border-color: #c4d8cd1b;
 }
 .owner-profile > span:nth-child(2) {
-  font-size: 11px;
+  font-size: 12px;
   color: #d7e8da;
 }
 .owner-profile small {
-  font-size: 10px;
+  font-size: 12px;
   color: #b0c3b5;
 }
 .small-avatar {
@@ -335,7 +335,7 @@ textarea:focus-visible {
   color: var(--ink);
 }
 .global-search kbd {
-  font-size: 10px;
+  font-size: 12px;
   min-width: 32px;
   padding: 0 3px;
   color: #64776b;
@@ -378,14 +378,14 @@ textarea:focus-visible {
   z-index: 1;
 }
 .workspace-footer {
-  font-size: 10px;
+  font-size: 12px;
   color: #627268;
   margin-top: 35px;
   min-height: 58px;
   border-top: 1px solid #dae6de;
 }
 .workspace-footer > span:last-child {
-  font-size: 10px;
+  font-size: 12px;
 }
 .status-dot {
   background: #3f7955;
@@ -405,7 +405,7 @@ textarea:focus-visible {
 .studio-eyebrow,
 .eyebrow {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #577260;
   letter-spacing: 1.65px;
   font-weight: 600;
@@ -478,7 +478,7 @@ textarea:focus-visible {
   color: #1a2e23;
 }
 .metric-copy small {
-  font-size: 10px;
+  font-size: 12px;
   color: #62806a;
   display: block;
   margin-top: 8px;
@@ -550,7 +550,7 @@ textarea:focus-visible {
   color: #6b8a76;
 }
 .studio-panel-footnote {
-  font-size: 10px;
+  font-size: 12px;
   color: #687b6f;
   padding: 12px 19px;
   margin: 0;
@@ -558,7 +558,7 @@ textarea:focus-visible {
   line-height: 1.65;
 }
 .studio-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: #68796e;
 }
 .studio-pill {
@@ -567,7 +567,7 @@ textarea:focus-visible {
   gap: 5px;
   padding: 3px 7px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.6;
   max-width: 100%;
@@ -596,7 +596,7 @@ textarea:focus-visible {
 }
 .studio-chips > span {
   padding: 3px 7px;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 6px;
   background: #eff5f0;
   color: #426b51;
@@ -618,7 +618,7 @@ textarea:focus-visible {
 .studio-table th {
   padding: 10px 9px;
   background: #f4f7f4;
-  font-size: 10px;
+  font-size: 12px;
   color: #61756a;
   font-weight: 500;
   white-space: nowrap;
@@ -652,7 +652,7 @@ textarea:focus-visible {
 .studio-table small {
   display: block;
   color: #6d7d73;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 5px;
   line-height: 1.55;
 }
@@ -705,7 +705,7 @@ textarea:focus-visible {
   color: #263f2f;
 }
 .studio-identity small {
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -753,7 +753,7 @@ textarea:focus-visible {
   background: #eff5ed;
 }
 .badge {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   padding: 3px 8px;
   border-radius: 6px;
@@ -833,7 +833,7 @@ textarea:focus-visible {
   color: #34503b;
 }
 .studio-capability small {
-  font-size: 10px;
+  font-size: 12px;
   color: #677e6c;
   display: block;
   margin-top: 4px;
@@ -873,7 +873,7 @@ textarea:focus-visible {
   margin-bottom: 10px;
 }
 .studio-story > p {
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.8;
   color: #677969;
   margin: 0 0 15px;
@@ -886,7 +886,7 @@ textarea:focus-visible {
   border-top: 1px solid #e9eeea;
   padding-top: 10px;
   margin-top: auto;
-  font-size: 10px;
+  font-size: 12px;
   color: #687c6c;
 }
 .studio-composition {
@@ -920,7 +920,7 @@ textarea:focus-visible {
   color: #273e30;
 }
 .studio-donut small {
-  font-size: 10px;
+  font-size: 12px;
   color: #6a7b6d;
 }
 .studio-legend {
@@ -934,7 +934,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: 12px;
   color: #617362;
 }
 .studio-legend i {
@@ -978,7 +978,7 @@ textarea:focus-visible {
   font-weight: 550;
 }
 .studio-source-mini small {
-  font-size: 10px;
+  font-size: 12px;
   display: block;
   color: #6f8070;
   margin-top: 5px;
@@ -1022,7 +1022,7 @@ textarea:focus-visible {
 .studio-capture small {
   display: block;
   margin-top: 5px;
-  font-size: 10px;
+  font-size: 12px;
   color: #6d7e73;
 }
 .studio-capture > svg {
@@ -1036,7 +1036,7 @@ textarea:focus-visible {
   font-size: 23px;
 }
 .compact-metrics .metric-copy small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .compact-metrics .studio-icon {
   width: 38px;
@@ -1073,7 +1073,7 @@ textarea:focus-visible {
   border-radius: 0;
   padding: 12px 11px;
   color: #6b7b70;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
   min-height: 41px;
@@ -1087,7 +1087,7 @@ textarea:focus-visible {
   margin-left: 5px;
   background: #eaf3e8;
   padding: 1px 5px;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 5px;
 }
 .studio-filter-bar {
@@ -1103,7 +1103,7 @@ textarea:focus-visible {
   border-radius: 9px;
   padding: 8px 10px;
   min-height: 36px;
-  font-size: 11px;
+  font-size: 12px;
   max-width: 150px;
 }
 .studio-search {
@@ -1177,7 +1177,7 @@ textarea:focus-visible {
   padding: 15px 18px;
   border-top: 1px solid #e9efe9;
   color: #6b8070;
-  font-size: 10px;
+  font-size: 12px;
 }
 .studio-detail-placeholder {
   display: flex;
@@ -1247,7 +1247,7 @@ textarea:focus-visible {
   font-weight: 650;
 }
 .studio-detail-top small {
-  font-size: 10px;
+  font-size: 12px;
   color: #758372;
 }
 .studio-detail-top > .icon-button {
@@ -1271,7 +1271,7 @@ textarea:focus-visible {
   margin-top: 0;
 }
 .studio-link-box {
-  font-size: 11px;
+  font-size: 12px;
   background: #f5f8f6;
   border: 1px solid #e9eee9;
   border-radius: 9px;
@@ -1279,7 +1279,7 @@ textarea:focus-visible {
   overflow-wrap: anywhere;
 }
 .studio-link-box .external {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   display: flex;
   justify-content: space-between;
@@ -1300,7 +1300,7 @@ textarea:focus-visible {
   border-radius: 9px;
   background: #f3f7ef;
   color: #637452;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   margin: 15px 0;
 }
@@ -1319,7 +1319,7 @@ textarea:focus-visible {
   gap: 15px;
   padding: 9px 0;
   border-bottom: 1px solid #edf2ed;
-  font-size: 11px;
+  font-size: 12px;
 }
 .studio-dl dt {
   color: #7c897c;
@@ -1336,7 +1336,7 @@ textarea:focus-visible {
   border: 1px solid #e5ece4;
   border-radius: 9px;
   padding: 10px 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: #58705b;
   background: #fafcf9;
 }
@@ -1349,13 +1349,13 @@ textarea:focus-visible {
 .studio-technical code {
   display: block;
   margin: 9px 0;
-  font-size: 10px;
+  font-size: 12px;
   overflow-wrap: anywhere;
   word-break: break-all;
   color: #647963;
 }
 .studio-technical > span {
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 10px;
   display: block;
 }
@@ -1368,7 +1368,7 @@ textarea:focus-visible {
   flex-wrap: wrap;
 }
 .studio-detail-actions .button {
-  font-size: 11px;
+  font-size: 12px;
   padding: 9px 12px;
   flex: 1;
 }
@@ -1385,7 +1385,7 @@ textarea:focus-visible {
 }
 .studio-json {
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
+  font-size: 12px;
   padding: 14px;
   background: #f5f8f4;
   border-radius: 9px;
@@ -1413,7 +1413,7 @@ textarea:focus-visible {
 .studio-related-list small {
   display: block;
   color: #72866e;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 5px;
 }
 .studio-related-list svg {
@@ -1486,7 +1486,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #ffffff;
 }
 .studio-file-cover > span {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.4px;
 }
 .format-markdown {
@@ -1533,22 +1533,22 @@ textarea:focus-visible {
   overflow: hidden;
 }
 .studio-file-copy p {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   color: #7a8b78;
   margin: 0 0 9px;
 }
 .studio-file-copy small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #788c75;
   margin: 8px 0;
 }
 .studio-file-copy .studio-pill {
-  font-size: 9px;
+  font-size: 12px;
 }
 .studio-artifact-card footer {
-  font-size: 9px;
+  font-size: 12px;
   color: #6a8067;
   display: flex;
   align-items: center;
@@ -1558,7 +1558,7 @@ textarea:focus-visible {
   border-top: 1px solid #edf1ea;
 }
 .studio-artifact-card footer .text-button {
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
   min-height: 26px;
   gap: 3px;
@@ -1587,7 +1587,7 @@ textarea:focus-visible {
 .studio-artifact-preview pre {
   margin: 0;
   padding: 17px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1604,7 +1604,7 @@ textarea:focus-visible {
   gap: 12px;
   text-align: center;
   padding: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: #70896c;
 }
 .studio-preview-caption {
@@ -1612,12 +1612,12 @@ textarea:focus-visible {
   align-items: center;
   gap: 5px;
   color: #71876c;
-  font-size: 9px;
+  font-size: 12px;
   margin: 7px 20px;
 }
 .studio-preview-caption .text-button {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 12px;
   min-height: 25px;
   padding: 0;
 }
@@ -1638,12 +1638,12 @@ textarea:focus-visible {
 }
 .studio-publication small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: #7c8e74;
   margin: 6px 0;
 }
 .studio-publication .external {
-  font-size: 11px;
+  font-size: 12px;
 }
 .studio-publication-summary {
   margin-top: 19px;
@@ -1699,7 +1699,7 @@ textarea:focus-visible {
   border-radius: 9px;
 }
 .studio-project-options strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #304e36;
   line-height: 1.6;
@@ -1708,7 +1708,7 @@ textarea:focus-visible {
 }
 .studio-project-options small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #6d876c;
   margin-top: 5px;
 }
@@ -1721,7 +1721,7 @@ textarea:focus-visible {
   border: 1px solid #e0eadd;
   background: #fff;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 12px;
   color: #466a47;
   min-height: 38px;
   margin: 12px 11px 18px;
@@ -1732,7 +1732,7 @@ textarea:focus-visible {
   border-top: 1px solid #eef3eb;
 }
 .studio-project-help p {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.9;
   margin-top: 10px;
   color: #6f8469;
@@ -1763,7 +1763,7 @@ textarea:focus-visible {
   line-height: 1.55;
 }
 .studio-project-title p {
-  font-size: 10px;
+  font-size: 12px;
   color: #71826b;
   margin: 0;
 }
@@ -1793,7 +1793,7 @@ textarea:focus-visible {
   letter-spacing: -0.5px;
 }
 .studio-project-numbers small {
-  font-size: 10px;
+  font-size: 12px;
   color: #6f8269;
   display: block;
   margin-top: 5px;
@@ -1821,20 +1821,20 @@ textarea:focus-visible {
   padding: 0;
 }
 .studio-grants-table .agent-card td {
-  font-size: 11px;
+  font-size: 12px;
   padding: 12px 7px;
 }
 .studio-grants-table .studio-identity {
   gap: 8px;
 }
 .studio-grants-table .studio-identity strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .studio-grants-table .studio-identity small {
-  font-size: 9px;
+  font-size: 12px;
 }
 .studio-grants-table .button {
-  font-size: 10px;
+  font-size: 12px;
   min-height: 33px;
   padding: 6px 8px;
   gap: 5px;
@@ -1844,10 +1844,10 @@ textarea:focus-visible {
   height: 32px;
 }
 .studio-grants-table .studio-pill {
-  font-size: 9px;
+  font-size: 12px;
 }
 .studio-grants-table small {
-  font-size: 9px;
+  font-size: 12px;
 }
 .studio-access-detail {
   overflow: hidden;
@@ -1890,7 +1890,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: #4c6746;
 }
 .studio-grants svg {
@@ -1918,7 +1918,7 @@ textarea:focus-visible {
   margin: 12px 0;
 }
 .studio-access-detail .studio-sub {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.8;
   margin-top: 12px;
 }
@@ -1933,7 +1933,7 @@ textarea:focus-visible {
   min-width: 0;
 }
 .studio-copy-id code {
-  font-size: 10px;
+  font-size: 12px;
   overflow-wrap: anywhere;
   color: #5b7552;
   flex: 1;
@@ -1955,7 +1955,7 @@ textarea:focus-visible {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: #5a7850;
 }
 .studio-detail-actions.vertical {
@@ -1974,7 +1974,7 @@ textarea:focus-visible {
   margin-top: 0;
 }
 .studio-access-guide p {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.9;
   color: #6b8560;
 }
@@ -1982,7 +1982,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   padding: 9px 0;
   color: #416c3b;
 }
@@ -1995,7 +1995,7 @@ textarea:focus-visible {
   margin: 17px 0 9px;
 }
 .studio-detail-placeholder.compact p {
-  font-size: 11px;
+  font-size: 12px;
 }
 .agent-fieldset {
   border: 1px solid #e2eade;
@@ -2037,7 +2037,7 @@ textarea:focus-visible {
   background: #e9f2e2;
 }
 .filter-tabs button span {
-  font-size: 10px;
+  font-size: 12px;
   background: #e2eadb;
   color: #506e46;
 }
@@ -2075,14 +2075,14 @@ textarea:focus-visible {
   min-height: 43px;
 }
 .card-tags span {
-  font-size: 10px;
+  font-size: 12px;
   background: #edf4e5;
   color: #557346;
   padding: 3px 7px;
   border-radius: 5px;
 }
 .card-footer {
-  font-size: 10px;
+  font-size: 12px;
   color: #6c805e;
   border-color: #e7edde;
 }
@@ -2098,11 +2098,11 @@ textarea:focus-visible {
   height: 39px;
 }
 .collection-footnote {
-  font-size: 11px;
+  font-size: 12px;
   color: #6d805c;
 }
 .table-wrap table th {
-  font-size: 11px;
+  font-size: 12px;
   color: #61784e;
 }
 .table-wrap table td {
@@ -2114,7 +2114,7 @@ textarea:focus-visible {
   color: #36572c;
 }
 .table-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: #738a60;
 }
 .publication-title {
@@ -2140,7 +2140,7 @@ textarea:focus-visible {
   border-color: #dfe7d2;
 }
 .tiny-label {
-  font-size: 9px;
+  font-size: 12px;
 }
 .with-editor {
   padding: 20px 25px 0;
@@ -2169,7 +2169,7 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 .save-indicator {
-  font-size: 10px;
+  font-size: 12px;
   color: #628454;
 }
 .save-indicator.unsaved {
@@ -2199,7 +2199,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #edf2e8;
 }
 .editor-title .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   color: #7c906b;
   letter-spacing: 1.5px;
 }
@@ -2219,7 +2219,7 @@ textarea:focus-visible {
   color: #8c9b7d;
 }
 .editor-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: #7b8d6a;
   margin-top: 13px;
   gap: 10px;
@@ -2269,11 +2269,11 @@ textarea:focus-visible {
   gap: 7px;
 }
 .block-seq {
-  font-size: 9px;
+  font-size: 12px;
   color: #8a9d79;
 }
 .block-toolbar select {
-  font-size: 10px;
+  font-size: 12px;
   background: none;
   color: #5c7850;
   border: 0;
@@ -2342,18 +2342,18 @@ textarea:focus-visible {
 .block-cites {
   border: 0;
   padding: 8px 13px;
-  font-size: 10px;
+  font-size: 12px;
   color: #74925f;
 }
 .block-cites summary {
-  font-size: 10px;
+  font-size: 12px;
   color: #628848;
 }
 .block-cites label {
-  font-size: 11px;
+  font-size: 12px;
 }
 .code-lang {
-  font-size: 10px;
+  font-size: 12px;
   border-color: #e0e8d6;
   padding: 3px 5px;
 }
@@ -2365,12 +2365,12 @@ textarea:focus-visible {
   border-radius: 11px;
 }
 .add-blocks > span {
-  font-size: 10px;
+  font-size: 12px;
   color: #769360;
 }
 .add-blocks button {
   min-height: 30px;
-  font-size: 11px;
+  font-size: 12px;
   padding: 6px 9px;
   background: #fff;
   border-color: #e2ebd7;
@@ -2399,12 +2399,12 @@ textarea:focus-visible {
   margin: 0 0 15px;
 }
 .inspector-section > p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: #758b61;
 }
 .inspector-section .field {
-  font-size: 11px;
+  font-size: 12px;
   color: #647e4e;
   margin-bottom: 13px;
 }
@@ -2430,7 +2430,7 @@ textarea:focus-visible {
   gap: 8px;
 }
 .source-checks small {
-  font-size: 10px;
+  font-size: 12px;
   color: #788f63;
   line-height: 1.6;
 }
@@ -2461,10 +2461,10 @@ textarea:focus-visible {
   border-radius: 6px;
   flex-shrink: 0;
   color: #668a42;
-  font-size: 10px;
+  font-size: 12px;
 }
 .studio-citation-link strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.7;
   color: #476333;
@@ -2478,13 +2478,13 @@ textarea:focus-visible {
   background: #edf4e5;
   padding: 17px;
   color: #577942;
-  font-size: 11px;
+  font-size: 12px;
 }
 .inspector-tip strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .inspector-tip p {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.85;
   color: #6d8955;
 }
@@ -2546,16 +2546,16 @@ textarea:focus-visible {
   border-radius: 10px;
 }
 .article-preview figcaption {
-  font-size: 11px;
+  font-size: 12px;
   color: #708b53;
 }
 .preview-kicker {
-  font-size: 9px;
+  font-size: 12px;
   color: #789665;
   letter-spacing: 1.7px;
 }
 .preview-note {
-  font-size: 11px;
+  font-size: 12px;
   padding: 13px 28px;
   color: #738b5d;
   background: #f8fbf3;
@@ -2573,7 +2573,7 @@ textarea:focus-visible {
   line-height: 1.7;
 }
 .version-item p {
-  font-size: 11px;
+  font-size: 12px;
   color: #7b9065;
 }
 .version-icon {
@@ -2582,7 +2582,7 @@ textarea:focus-visible {
   color: #597c39;
 }
 .fine-print {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: #708759;
 }
@@ -2648,7 +2648,7 @@ textarea:focus-visible {
   color: #486b31;
 }
 .asset-card p {
-  font-size: 11px;
+  font-size: 12px;
   color: #7a935f;
 }
 .asset-card section {
@@ -2736,7 +2736,7 @@ textarea:focus-visible {
   z-index: 100;
 }
 .hash-box {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   background: #f4f8ed;
   border-color: #e1ebd3;
@@ -2758,7 +2758,7 @@ textarea:focus-visible {
   font-size: 12px;
 }
 .connection-list code {
-  font-size: 11px;
+  font-size: 12px;
 }
 .login-page {
   background:
@@ -2843,13 +2843,13 @@ textarea:focus-visible {
     height: 38px;
   }
   .metric-copy > span {
-    font-size: 11px;
+    font-size: 12px;
   }
   .metric-copy strong {
     font-size: 26px;
   }
   .metric-copy small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-access-layout {
     grid-template-columns: 165px minmax(0, 1fr) 252px;
@@ -2883,7 +2883,7 @@ textarea:focus-visible {
   }
   .studio-grants-table .button {
     padding: 5px 7px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-access-detail .studio-detail-body {
     padding: 13px;
@@ -2903,7 +2903,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .studio-capture small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-capture > svg {
     display: none;
@@ -2949,13 +2949,13 @@ textarea:focus-visible {
     min-height: 110px;
   }
   .studio-file-cover > span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .file-cover-lines {
     width: 29px;
   }
   .studio-file-copy h3 {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-artifact-card footer {
     padding: 6px 8px;
@@ -2994,7 +2994,7 @@ textarea:focus-visible {
   }
   .studio-table th,
   .studio-table td {
-    font-size: 11px;
+    font-size: 12px;
   }
   .dashboard-agents .studio-identity .studio-icon {
     display: none;
@@ -3010,7 +3010,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .studio-story .badge {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (max-width: 1090px) {
@@ -3036,7 +3036,7 @@ textarea:focus-visible {
     padding: 18px;
   }
   .metric-copy small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .metric-copy > span {
     font-size: 12px;
@@ -3098,7 +3098,7 @@ textarea:focus-visible {
     display: inline-flex;
   }
   .studio-grants-table .button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-table-scroll {
     padding: 0 15px;
@@ -3166,7 +3166,7 @@ textarea:focus-visible {
     font-size: 13px;
   }
   .studio-capture small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .editor-layout {
     grid-template-columns: 1fr;
@@ -3290,7 +3290,7 @@ textarea:focus-visible {
     min-width: 0;
   }
   .global-search input {
-    font-size: 11px;
+    font-size: 12px;
   }
   .global-search kbd {
     display: none;
@@ -3334,7 +3334,7 @@ textarea:focus-visible {
   }
   .studio-eyebrow,
   .eyebrow {
-    font-size: 9px;
+    font-size: 12px;
     letter-spacing: 1.35px;
     margin-bottom: 7px;
   }
@@ -3360,7 +3360,7 @@ textarea:focus-visible {
   }
   .button.compact {
     min-height: 40px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .icon-button,
   .icon-button.small {
@@ -3391,13 +3391,13 @@ textarea:focus-visible {
     display: none;
   }
   .metric-copy > span {
-    font-size: 11px;
+    font-size: 12px;
   }
   .metric-copy strong {
     font-size: 26px;
   }
   .metric-copy small {
-    font-size: 10px;
+    font-size: 12px;
     margin-top: 7px;
     line-height: 1.7;
   }
@@ -3416,11 +3416,11 @@ textarea:focus-visible {
     font-size: 15px;
   }
   .studio-panel-title .text-button {
-    font-size: 11px;
+    font-size: 12px;
     gap: 4px;
   }
   .studio-panel-footnote {
-    font-size: 10px;
+    font-size: 12px;
     padding: 12px 16px;
   }
   .dashboard-agents .studio-table-scroll {
@@ -3431,21 +3431,21 @@ textarea:focus-visible {
     display: none;
   }
   .dashboard-agents .studio-table th {
-    font-size: 10px;
+    font-size: 12px;
   }
   .dashboard-agents .studio-table td {
     padding: 12px 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .dashboard-agents .studio-identity strong {
     font-size: 12px;
   }
   .dashboard-agents .studio-identity small {
     max-width: 115px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-chips > span {
-    font-size: 9px;
+    font-size: 12px;
     padding: 3px 5px;
   }
   .dashboard-capabilities {
@@ -3480,10 +3480,10 @@ textarea:focus-visible {
     font-size: 12px !important;
   }
   .studio-story footer {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-story .badge {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-composition {
     gap: 28px;
@@ -3499,10 +3499,10 @@ textarea:focus-visible {
     font-size: 25px;
   }
   .studio-donut small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-legend > div {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-source-mini {
     margin: 0 16px;
@@ -3512,13 +3512,13 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .studio-source-mini small {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-capability strong {
     font-size: 13px;
   }
   .studio-capability small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-capability {
     padding: 13px;
@@ -3545,7 +3545,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .studio-capture small {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.7;
   }
   .compact-metrics .studio-metric {
@@ -3560,14 +3560,14 @@ textarea:focus-visible {
     font-size: 23px;
   }
   .compact-metrics .metric-copy small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-filter-tabs {
     padding: 5px 8px 0;
     gap: 0;
   }
   .studio-filter-tabs button {
-    font-size: 11px;
+    font-size: 12px;
     padding: 12px 10px;
     min-height: 44px;
   }
@@ -3576,7 +3576,7 @@ textarea:focus-visible {
     gap: 7px;
   }
   .studio-filter-bar select {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 112px;
     min-height: 40px;
     padding: 7px;
@@ -3623,13 +3623,13 @@ textarea:focus-visible {
   }
   .source-table .studio-identity small {
     max-width: 175px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .source-table .studio-pill {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-list-footer {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.7;
     padding: 13px;
   }
@@ -3657,7 +3657,7 @@ textarea:focus-visible {
     font-size: 16px;
   }
   .studio-detail-top small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-detail-top > .icon-button {
     width: 36px;
@@ -3704,35 +3704,35 @@ textarea:focus-visible {
     min-height: 113px;
   }
   .studio-file-cover > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-file-copy h3 {
     font-size: 14px;
     margin-bottom: 9px;
   }
   .studio-file-copy p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-file-copy small {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-file-copy .studio-pill {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-artifact-card footer {
     padding: 8px 13px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-artifact-card footer .text-button {
     min-height: 36px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-artifact-preview {
     height: 280px;
     margin: 4px 15px 0;
   }
   .studio-preview-caption {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-publication-summary .studio-table-scroll {
     overflow: auto;
@@ -3772,7 +3772,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .studio-project-options small {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-project-help {
     display: none;
@@ -3793,13 +3793,13 @@ textarea:focus-visible {
     font-size: 18px;
   }
   .studio-project-title p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-project-numbers strong {
     font-size: 23px;
   }
   .studio-project-numbers small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-grants-table .studio-identity .studio-icon {
     display: none;
@@ -3818,7 +3818,7 @@ textarea:focus-visible {
     overflow-wrap: anywhere;
   }
   .studio-grants-table .studio-identity small {
-    font-size: 9px;
+    font-size: 12px;
     max-width: 100px;
   }
   .studio-grants-table .agent-card td {
@@ -3826,15 +3826,15 @@ textarea:focus-visible {
   }
   .studio-grants-table .button {
     min-height: 44px;
-    font-size: 10px;
+    font-size: 12px;
     padding: 8px 6px;
     gap: 4px;
   }
   .studio-grants-table small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .studio-grants-table .studio-pill {
-    font-size: 10px;
+    font-size: 12px;
   }
   .studio-access-detail .studio-grants {
     display: block;
@@ -3855,14 +3855,14 @@ textarea:focus-visible {
     padding: 15px;
   }
   .studio-access-detail .studio-sub {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-access-guide {
     display: block;
     padding: 19px;
   }
   .studio-access-guide p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-access-guide a {
     min-height: 40px;
@@ -3872,7 +3872,7 @@ textarea:focus-visible {
     font-size: 13px;
   }
   .studio-copy-id code {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-detail-placeholder.compact p {
     font-size: 12px;
@@ -3894,7 +3894,7 @@ textarea:focus-visible {
   }
   .card-tags span,
   .card-footer {
-    font-size: 11px;
+    font-size: 12px;
   }
   .library-search {
     max-width: none;
@@ -3908,11 +3908,11 @@ textarea:focus-visible {
   }
   .filter-tabs button {
     padding: 9px 8px;
-    font-size: 11px;
+    font-size: 12px;
     min-height: 40px;
   }
   .filter-tabs button span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .segmented button {
     min-height: 38px;
@@ -3933,7 +3933,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .asset-card p {
-    font-size: 10px;
+    font-size: 12px;
     flex-wrap: wrap;
   }
   .drop-zone {
@@ -3944,7 +3944,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .drop-zone small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .drop-zone .subtle-badge {
     display: none;
@@ -3953,7 +3953,7 @@ textarea:focus-visible {
     min-height: 44px;
   }
   .section-heading .eyebrow {
-    font-size: 9px;
+    font-size: 12px;
   }
   .table-wrap table {
     min-width: 570px;
@@ -3974,7 +3974,7 @@ textarea:focus-visible {
   }
   .editor-toolbar > .text-button {
     min-height: 34px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .editor-actions {
     width: 100%;
@@ -3984,7 +3984,7 @@ textarea:focus-visible {
   }
   .editor-actions .button {
     min-height: 44px;
-    font-size: 11px;
+    font-size: 12px;
     padding: 8px 12px;
     gap: 6px;
   }
@@ -3992,7 +3992,7 @@ textarea:focus-visible {
     width: 15px;
   }
   .save-indicator {
-    font-size: 10px;
+    font-size: 12px;
     margin-right: auto;
     white-space: normal;
     max-width: 103px;
@@ -4002,7 +4002,7 @@ textarea:focus-visible {
     width: 32px;
   }
   .editor-actions > .text-button {
-    font-size: 10px;
+    font-size: 12px;
   }
   .editor-layout {
     gap: 16px;
@@ -4015,7 +4015,7 @@ textarea:focus-visible {
     height: 39px;
   }
   .editor-meta {
-    font-size: 10px;
+    font-size: 12px;
     gap: 7px;
     flex-wrap: wrap;
     margin-top: 9px;
@@ -4026,7 +4026,7 @@ textarea:focus-visible {
     overflow: auto;
   }
   .editor-tabs button {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 46px;
     gap: 6px;
     white-space: nowrap;
@@ -4041,7 +4041,7 @@ textarea:focus-visible {
     flex-wrap: wrap;
   }
   .block-toolbar select {
-    font-size: 11px;
+    font-size: 12px;
     padding: 5px 3px;
     min-height: 30px;
   }
@@ -4067,7 +4067,7 @@ textarea:focus-visible {
     overflow-x: auto;
   }
   .block-cites summary {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 32px;
   }
   .block-cites label {
@@ -4075,7 +4075,7 @@ textarea:focus-visible {
     line-height: 1.8;
   }
   .code-lang {
-    font-size: 10px;
+    font-size: 12px;
     width: 65px;
     min-height: 30px;
   }
@@ -4084,10 +4084,10 @@ textarea:focus-visible {
     gap: 7px;
   }
   .add-blocks > span {
-    font-size: 11px;
+    font-size: 12px;
   }
   .add-blocks button {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 36px;
     padding: 7px 10px;
   }
@@ -4118,7 +4118,7 @@ textarea:focus-visible {
     min-height: 44px;
   }
   .source-checks small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .source-checks input {
     width: 16px;
@@ -4138,7 +4138,7 @@ textarea:focus-visible {
     font-size: 12px;
   }
   .inspector-tip p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .article-preview {
     padding: 24px 20px;
@@ -4157,7 +4157,7 @@ textarea:focus-visible {
   }
   .preview-note {
     padding: 12px 18px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .version-list {
     padding: 20px;
@@ -4169,7 +4169,7 @@ textarea:focus-visible {
     font-size: 13px;
   }
   .version-item p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .version-item .button {
     min-height: 40px;
@@ -4180,14 +4180,14 @@ textarea:focus-visible {
   }
   .workspace-footer {
     margin-top: 26px;
-    font-size: 9px;
+    font-size: 12px;
     gap: 7px;
     flex-wrap: wrap;
     padding: 17px 0;
     min-height: 58px;
   }
   .workspace-footer > span:last-child {
-    font-size: 9px;
+    font-size: 12px;
   }
   .modal {
     max-width: calc(100vw - 24px);
@@ -4240,7 +4240,7 @@ textarea:focus-visible {
     font-size: 14px;
   }
   .fine-print {
-    font-size: 11px;
+    font-size: 12px;
   }
   .studio-detail-actions.vertical {
     max-width: none;
@@ -4306,5 +4306,83 @@ textarea:focus-visible {
   }
   body:has(.nav-open) {
     overflow: hidden;
+  }
+}
+
+/* Readability pass after real viewport screenshot review. */
+.studio-table {
+  min-width: 0;
+}
+.studio-table td {
+  overflow-wrap: anywhere;
+}
+.studio-table-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.studio-identity > span:last-child {
+  min-width: 0;
+}
+.studio-panel-title h2 {
+  font-size: 16px;
+}
+.studio-identity strong,
+.studio-grants-table .studio-identity strong {
+  font-size: 13px;
+}
+.studio-heading p,
+.section-heading p {
+  font-size: 14px;
+}
+.sidebar nav button {
+  font-size: 14px;
+}
+.metric-copy > span {
+  font-size: 13px;
+}
+.studio-file-copy h3 {
+  font-size: 13px;
+}
+.studio-story h3 {
+  font-size: 14px;
+}
+.studio-table.agent-table {
+  table-layout: fixed;
+}
+.studio-table.agent-table th:first-child {
+  width: 56%;
+}
+.studio-table.agent-table th:last-child {
+  width: 23%;
+}
+@media (max-width: 760px) {
+  .studio-table.agent-table th,
+  .studio-table.agent-table td {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  .studio-grants-table th:nth-child(1) {
+    width: 42%;
+  }
+  .studio-grants-table th:nth-child(2) {
+    width: 26%;
+  }
+  .studio-grants-table th:nth-child(3) {
+    width: 32%;
+  }
+  .studio-grants-table .button {
+    white-space: normal;
+  }
+  .studio-grants-table .button svg {
+    display: none;
+  }
+  .studio-grants-table .studio-identity strong {
+    font-size: 12px;
+  }
+  .studio-identity strong {
+    overflow-wrap: anywhere;
+  }
+  .studio-heading p {
+    font-size: 13px;
   }
 }
