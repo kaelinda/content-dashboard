@@ -670,6 +670,171 @@ test("audit records operation results without secrets or document bodies", async
     ),
   );
 });
+test("malformed filename encoding is a correctable error rather than a retryable server failure", async () => {
+  const r = await agentHttp(
+    new Request(base + "/api/v1/files?project_id=default", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + writer,
+        "Content-Type": "text/plain",
+        "X-Filename": "%E0%A4",
+        "Idempotency-Key": "bad-filename-01",
+      },
+      body: "fixture",
+    }),
+  );
+  assert.equal(r.status, 422);
+  const e = await r.json();
+  assert.equal(e.code, "INVALID_FILENAME");
+  assert.equal(e.retryable, false);
+});
+test("ambiguous upload/write queries are rejected before data creation", async () => {
+  for (const query of [
+    "project_id=default&project_id=default",
+    "project_id=default&actor=owner",
+  ]) {
+    const r = await agentHttp(
+      new Request(base + "/api/v1/files?" + query, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + writer,
+          "Content-Type": "text/plain",
+          "X-Filename": "fixture.txt",
+          "Idempotency-Key": "ambiguous-file-01",
+        },
+        body: "fixture",
+      }),
+    );
+    assert.equal(r.status, 400);
+    assert.equal((await r.json()).retryable, false);
+  }
+  const r = await call(
+    "contents?project_id=default",
+    writer,
+    "POST",
+    { project_id: "default", title: "do not store", markdown: "fixture" },
+    "ambiguous-write-01",
+  );
+  assert.equal(r.status, 400);
+  assert.equal(r.json.code, "UNKNOWN_PARAMETER");
+});
+test("JSON transport rejects malformed UTF-8 instead of replacing original characters", async () => {
+  const bytes = Buffer.concat([
+    Buffer.from('{"project_id":"default","title":"'),
+    Buffer.from([0xc3, 0x28]),
+    Buffer.from('","markdown":"fixture"}'),
+  ]);
+  const r = await agentHttp(
+    new Request(base + "/api/v1/contents", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + writer,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "invalid-utf8-01",
+      },
+      body: bytes,
+    }),
+  );
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).code, "INVALID_ENCODING");
+});
+test("JSON media type is exact but accepts case and parameter variations", async () => {
+  const body = JSON.stringify({
+    project_id: "default",
+    title: "media fixture",
+    markdown: "valid text",
+  });
+  for (const [mime, expected] of [
+    ["application/jsonp", 415],
+    ["Application/JSON; charset=utf-8", 201],
+  ] as const) {
+    const r = await agentHttp(
+      new Request(base + "/api/v1/sources", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + writer,
+          "Content-Type": mime,
+          "Idempotency-Key": "media-fixture-01",
+        },
+        body,
+      }),
+    );
+    assert.equal(r.status, expected, JSON.stringify(await r.json()));
+  }
+});
+test("REST and MCP reject non-persistable Unicode/NUL with the same recoverable error", async () => {
+  for (const markdown of ["has\0nul", "unpaired\uD800"]) {
+    const body = {
+      project_id: "default",
+      title: "invalid text",
+      markdown,
+      idempotency_key: "invalid-text-" + randomUUID(),
+    };
+    const rest = await call("sources", writer, "POST", body);
+    assert.equal(rest.status, 422);
+    assert.equal(rest.json.code, "INVALID_TEXT");
+    const remote = await rpc(writer, "source_save", body);
+    assert.equal(remote.json.result.isError, true);
+    assert.match(JSON.stringify(remote.json.result), /INVALID_TEXT/);
+  }
+});
+test("editor retries reuse the committed ID and version while different payloads cannot reuse a key", async () => {
+  const payload = {
+    title: "Editor retry " + randomUUID(),
+    status: "draft",
+    tags: [],
+    source_ids: [],
+    blocks: [
+      {
+        id: randomUUID(),
+        type: "paragraph",
+        text: "first snapshot",
+        source_refs: [],
+      },
+    ],
+  };
+  const key = "editor-test-" + randomUUID();
+  const save = (body: unknown, k: string, id?: string) =>
+    handle(
+      new Request(base + "/api/contents" + (id ? "/" + id : ""), {
+        method: id ? "PATCH" : "POST",
+        headers: {
+          Cookie: cookie,
+          Origin: base,
+          "Content-Type": "application/json",
+          "Idempotency-Key": k,
+        },
+        body: JSON.stringify(body),
+      }),
+    );
+  const first = await save(payload, key);
+  assert.equal(first.status, 201);
+  const c = await first.json();
+  const replay = await save(payload, key);
+  assert.equal(replay.status, 201);
+  assert.equal((await replay.json()).id, c.id);
+  const conflict = await save({ ...payload, title: "different" }, key);
+  assert.equal(conflict.status, 409);
+  const patch = {
+    ...payload,
+    title: "Editor second version",
+    expected_version: 1,
+  };
+  for (let i = 0; i < 2; i++) {
+    const r = await save(patch, key + "-patch", c.id);
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).version, 2);
+  }
+  assert.equal(
+    (
+      await (
+        await database()
+      ).query("SELECT * FROM content_versions WHERE content_id=$1", [c.id])
+    ).length,
+    2,
+  );
+});
+
 test("data and idempotency survive a process-level database reopen", async () => {
   await closeDatabase();
   const r = await call(

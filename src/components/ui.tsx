@@ -5,19 +5,31 @@ export async function api<T>(
   path: string,
   method = "GET",
   body?: unknown,
+  idempotencyKey?: string,
 ): Promise<T> {
   const response = await fetch("/api/" + path, {
     method,
     credentials: "same-origin",
     cache: "no-store",
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    headers: {
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = await response
-    .json()
-    .catch(() => ({ error: "服务器返回了无效响应" }));
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw Object.assign(new Error("服务器响应无效，保存结果尚未确认。"), {
+      status: 0,
+    });
+  }
   if (!response.ok)
-    throw new Error(data.error || `请求失败 (${response.status})`);
+    throw Object.assign(
+      new Error(data.detail || data.error || `请求失败 (${response.status})`),
+      { status: response.status, code: data.code },
+    );
   return data as T;
 }
 export async function upload<T>(path: string, file: File): Promise<T> {

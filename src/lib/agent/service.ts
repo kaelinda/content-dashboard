@@ -1,3 +1,4 @@
+import { validateAgentText } from "./request.ts";
 import { outputSchema } from "./outputs.ts";
 import { randomUUID, createHash } from "node:crypto";
 import { database, type Database } from "../db.ts";
@@ -187,6 +188,7 @@ export async function execute(
   try {
     const contract = contracts[op];
     if (contract.scope) requireScope(p, contract.scope);
+    validateAgentText(raw);
     const input = contract.schema.parse(raw);
     const db = await database();
     const data = input as Record<string, unknown>;
@@ -735,6 +737,7 @@ export async function uploadFile(
   requestId = randomUUID(),
 ) {
   requireScope(p, "files:write");
+  validateAgentText(input);
   const v = fileQuerySchema.parse(input);
   requireProject(p, v.project_id);
   if (!bytes.length || bytes.length > 20 * 1024 * 1024)
@@ -833,6 +836,7 @@ export async function administer(
       "OWNER_REQUIRED",
       "只有已登录的所有者可以管理 Agent 授权。",
     );
+  validateAgentText(input);
   const db = await database();
   if (method === "GET" && path === "admin")
     return {

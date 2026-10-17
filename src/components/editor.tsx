@@ -162,6 +162,7 @@ export function Editor({
     [renderChoice, setRenderChoice] = useState("html:web"),
     [rendered, setRendered] = useState<Artifact | null>(null);
   const [tagsText, setTagsText] = useState(initial.tags.join(", "));
+  const [saveError, setSaveError] = useState("");
   const [loadedVersion, setLoadedVersion] = useState<number | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const saveRef = useRef<() => Promise<void>>(async () => {});
@@ -169,6 +170,12 @@ export function Editor({
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const savingRef = useRef(false);
+  const pendingSave = useRef<{
+    key: string;
+    id: string;
+    draft: ContentInput;
+    body: ContentInput & { expected_version?: number };
+  } | null>(null);
   const [deleted, setDeleted] = useState<{ block: Block; index: number }[]>([]);
   function removeBlock(block: Block, index: number) {
     setDeleted((items) => [...items, { block, index }]);
@@ -183,7 +190,12 @@ export function Editor({
     setDraft((d) => {
       const blocks = [...d.blocks];
       if (!blocks.some((b) => b.id === item.block.id))
-        blocks.splice(Math.min(item.index, blocks.length), 0, item.block);
+        blocks.splice(Math.min(item.index, blocks.length), 0, {
+          ...item.block,
+          source_refs: item.block.source_refs.filter((id) =>
+            d.source_ids.includes(id),
+          ),
+        });
       return { ...d, blocks };
     });
     setDeleted((items) => items.slice(0, -1));
@@ -215,17 +227,28 @@ export function Editor({
   async function save() {
     if (busy || savingRef.current || (!dirty && record.id)) return;
     savingRef.current = true;
-    const submitted = draft;
+    // An uncertain outcome must be retried with its original snapshot and key.
+    const pending = pendingSave.current ?? {
+      key: "editor-" + crypto.randomUUID(),
+      id: record.id,
+      draft,
+      body: {
+        ...draft,
+        ...(record.id ? { expected_version: record.current_version } : {}),
+      },
+    };
+    pendingSave.current = pending;
+    const submitted = pending.draft;
+    setSaveError("");
     setBusy(true);
     try {
       const result = await api<ContentDetail>(
-        "contents" + (record.id ? "/" + record.id : ""),
-        record.id ? "PATCH" : "POST",
-        {
-          ...draft,
-          ...(record.id ? { expected_version: record.current_version } : {}),
-        },
+        "contents" + (pending.id ? "/" + pending.id : ""),
+        pending.id ? "PATCH" : "POST",
+        pending.body,
+        pending.key,
       );
+      pendingSave.current = null;
       setRecord(result);
       // A slow response confirms only its submitted snapshot; never overwrite newer typing.
       if (draftRef.current === submitted) {
@@ -241,8 +264,24 @@ export function Editor({
         "/?content=" + encodeURIComponent(result.id),
       );
       onSaved(result);
-      await onRefresh();
+      try {
+        await onRefresh();
+      } catch {
+        notice(
+          "正文已保存，但列表刷新失败。请稍后刷新，不需要重复保存。",
+          true,
+        );
+      }
     } catch (e) {
+      const status = (e as Error & { status?: number }).status;
+      if (
+        status &&
+        status >= 400 &&
+        status < 500 &&
+        ![408, 429].includes(status)
+      )
+        pendingSave.current = null;
+      setSaveError((e as Error).message);
       notice((e as Error).message, true);
     } finally {
       savingRef.current = false;
@@ -324,6 +363,10 @@ export function Editor({
     }
   }
   async function useVersion(version: number) {
+    if (pendingSave.current) {
+      notice("请先重试并确认上一笔保存，再切换历史版本。", true);
+      return;
+    }
     if (dirty && !confirm("载入历史版本会替换当前未保存的编辑，是否继续？"))
       return;
     try {
@@ -333,6 +376,8 @@ export function Editor({
       setDraft(draftOf(c));
       setTagsText(c.tags.join(", "));
       setLoadedVersion(version);
+      setDeleted([]);
+      setSaveError("");
       setTab("write");
       notice(`已载入 v${version}。保存将创建新版本，不会改写历史。`);
     } catch (e) {
@@ -361,6 +406,21 @@ export function Editor({
   const wordCount = draft.blocks.reduce((n, b) => n + b.text.length, 0);
   return (
     <div className="editor-view">
+      {saveError && (
+        <div className="inline-note" role="alert" aria-label="保存失败">
+          <div>
+            <strong>保存未获确认，当前编辑仍保留在本页。</strong>
+            <p>{saveError}</p>
+          </div>
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void save()}
+          >
+            重试保存
+          </button>
+        </div>
+      )}
       <div className="editor-toolbar">
         <button className="text-button" onClick={onBack}>
           <ArrowLeft size={17} />
