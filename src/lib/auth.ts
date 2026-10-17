@@ -8,7 +8,14 @@ export const READ = "content:read",
 export const origin = () => {
   const value = process.env.APP_URL || "http://localhost:3000";
   const u = new URL(value);
-  if (u.pathname !== "/" || u.search || u.hash || u.username || u.password)
+  if (
+    !["http:", "https:"].includes(u.protocol) ||
+    u.pathname !== "/" ||
+    u.search ||
+    u.hash ||
+    u.username ||
+    u.password
+  )
     throw new HubError("APP_URL 必须是网站根地址", 503);
   if (
     u.protocol !== "https:" &&

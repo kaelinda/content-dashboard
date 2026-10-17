@@ -13,7 +13,9 @@ COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/migrations ./migrations
+COPY --from=build --chown=node:node /app/src/lib/config.mjs ./src/lib/config.mjs
+COPY --from=build --chown=node:node /app/scripts/docker-entry.mjs ./scripts/docker-entry.mjs
 RUN mkdir -p /app/.data && chown node:node /app/.data
 USER node
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "scripts/docker-entry.mjs"]

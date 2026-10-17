@@ -2,7 +2,7 @@
 
 ## 1. 本地单进程
 
-`npm ci && npm run setup && npm run dev`。`setup` 不会覆盖现有 `.env.local`。应用缺少密码配置时只显示初始化说明，不会自动开放数据。
+`npm ci && npm run setup && npm run dev`。`setup` 不会覆盖现有 `.env.local`。运行入口会在缺少密码或配置无效时停止，并给出修复提示，不会开放数据。配置加载、doctor 与 Docker 初始化见 `ENVIRONMENT.md`。
 
 默认 PGlite 与 Blob 都在 `.data/`。生产启动 `npm run build && npm start` 使用 standalone，但数据仍解析为项目根目录下的绝对路径。不要同时用开发服务、生产服务和迁移命令打开同一 PGlite 目录。要换端口，用 `npm start -- --port 3200`，同时把 `APP_URL` 改为相同的根地址。
 
@@ -12,10 +12,10 @@
 
 建议 Linux + Docker Compose，使用仓库的 `Dockerfile` 与 `compose.yaml`。构建需要访问 npm；镜像使用 Node 22，运行进程为非 root 用户。
 
-1. 运行一次 `npm run setup`，妥善保存随机密码。
+1. 全新安装运行 `npm run setup -- --docker`，妥善保存随机密码；已有配置不可重跑。
 2. 在 `.env.local` 设置真实 `APP_URL=https://hub.your-domain.example`。
-3. 将 `POSTGRES_PASSWORD=<openssl rand -hex 24 的结果>` 写入 `.env.local`。只使用生成的十六进制密码，避免连接 URL 转义问题。
-4. `docker compose --env-file .env.local up -d --build`。
+3. `setup --docker` 已生成随机 `POSTGRES_PASSWORD`。已有配置只在创建新数据库时补充随机十六进制密码，不要通过改文件误以为已轮换现有数据库密码。
+4. `npm run doctor -- --compose` 后 `npm run docker:up`；独立 Docker 命令和 dotenv 语义区别见 `ENVIRONMENT.md`。
 5. 使用现有 Caddy / Nginx / Tunnel 转发 HTTPS 到 `127.0.0.1:3000`，保留原始 Host / Origin。禁止日志记录 Authorization、Cookie 和请求体。
 6. 检查 `/api/health`，再完成登录、导入、保存、下载和重启验证。
 
@@ -27,7 +27,7 @@ hub.your-domain.example {
 }
 ```
 
-Nginx 请求体限制应至少 12 MB、代理读取超时至少 120 秒。对外链抓取强烈建议再加基础设施出站策略：禁止 RFC1918、链路本地地址、云元数据地址和内部服务。应用内防护不是独立防火墙的替代。
+Nginx 请求体限制建议 25 MiB（覆盖当前 20 MiB 原文件上限）、代理读取超时至少 120 秒。对外链抓取强烈建议再加基础设施出站策略：禁止 RFC1918、链路本地地址、云元数据地址和内部服务。应用内防护不是独立防火墙的替代。
 
 生产数据库不要公开 5432；账号不能拥有你其他业务的数据库权限。当前自动迁移需要本项目 schema 的 DDL 权限。触发器约束能阻止正常 UPDATE/DELETE，但不能防范拥有 DDL 的恶意管理员；更高保证需分离 migration/runtime 角色并配置存储 Object Lock。
 

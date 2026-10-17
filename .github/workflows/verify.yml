@@ -77,8 +77,7 @@ jobs:
           node-version: '22'
       - name: Create isolated test configuration
         run: |
-          node scripts/setup.mjs
-          echo 'POSTGRES_PASSWORD=1234567890abcdef1234567890abcdef' >> .env.local
+          node scripts/setup.mjs --docker > /dev/null
       - name: Build and start production containers
         run: docker compose --env-file .env.local up --build --detach --wait --wait-timeout 180
       - name: Verify live application and private API
@@ -87,6 +86,9 @@ jobs:
           curl --fail http://127.0.0.1:3000/ > /tmp/page.html
           grep -q 'Content Hub' /tmp/page.html
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/contents)" = '401'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/v1/capabilities)" = '401'
+          curl --fail http://127.0.0.1:3000/openapi.json > /tmp/openapi.json
+          node -e "const s=require('/tmp/openapi.json'); if (!s.paths['/api/v1/capabilities']) process.exit(1)"
       - name: Container diagnostics
         if: failure()
         run: docker compose --env-file .env.local logs --no-color
