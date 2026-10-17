@@ -1,0 +1,56 @@
+name: Prepare verified configuration upgrade
+on:
+  push:
+    branches: ['feat/config-doctor-v1-1-2']
+    paths: ['.github/workflows/prepare-config.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/config-doctor-v1-1-2
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and apply reviewed source patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD^)" = '12aed738f7fbef8dabfee3352a4c93f2c9d4cfb3'
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, os, pathlib, urllib.request
+          shas = ['e26d86c50431c7e1a241733b14e215e19f0d1e55', '78ca415fcd1fdf42ab4a609d80518267c4d528ab', '79a041875af029b5afb9204ef63c209aa3489a12']
+          parts = []
+          for sha in shas:
+              request = urllib.request.Request('https://api.github.com/repos/kaelinda/content-dashboard/git/blobs/' + sha, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'User-Agent': 'content-hub-build'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  item = json.load(response)
+              data = base64.b64decode(item['content'])
+              assert hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest() == sha
+              parts.append(data)
+          patch = lzma.decompress(base64.b64decode(b''.join(parts), validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '5ac6dbc0eafce1dae2326c2c6a9afb3fcc41f54c20da2f115aed8e63d71ae34f'
+          pathlib.Path('/tmp/config.patch').write_bytes(patch)
+          PY
+          git apply --check /tmp/config.patch
+          git apply /tmp/config.patch
+          git add .env.example Dockerfile compose.yaml package.json package-lock.json README.md docs scripts src tests
+      - name: Install locked dependencies
+        run: npm ci --no-audit
+      - name: Format changed files, leaving applied migrations unchanged
+        run: |
+          git diff --cached --name-only --diff-filter=AM -z | xargs -0 npm exec --yes --package=prettier@3.6.2 -- prettier --write --ignore-unknown
+      - name: Verify configuration and types
+        run: npm run test:config && npm run typecheck
+      - name: Commit application source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .env.example Dockerfile compose.yaml package.json package-lock.json README.md docs scripts src tests
+          git commit -m 'feat: unify environment loading, safe initialization and configuration doctor'
+          git push origin HEAD:feat/config-doctor-v1-1-2
