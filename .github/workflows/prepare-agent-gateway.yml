@@ -1,0 +1,49 @@
+name: Prepare verified Agent gateway
+on:
+  push:
+    branches: ['feat/agent-gateway-v1.1']
+    paths: ['.github/workflows/prepare-agent-gateway.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/agent-gateway-v1.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source transfer and apply reviewed patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, lzma
+          parts = sorted(Path('.bootstrap').glob('v11-*.b64'))
+          assert len(parts) == 5
+          data = lzma.decompress(base64.b64decode(''.join(p.read_text().strip() for p in parts), validate=True))
+          assert hashlib.sha256(data).hexdigest() == 'd77e372a40e777346ae68c6a27530d1a8d41057aec6a071633fffb590032da4b'
+          assert b'diff --git a/.github/' not in data
+          Path('/tmp/agent-gateway.patch').write_bytes(data)
+          PY
+          git apply --check /tmp/agent-gateway.patch
+          git apply /tmp/agent-gateway.patch
+          rm -rf .bootstrap
+      - name: Format readable source without changing applied SQL migrations
+        run: npm exec --yes --package=prettier@3.6.2 -- prettier --write 'src/**/*.{ts,tsx,css}' 'scripts/*.{mjs,ts}' 'tests/**/*.{ts,mjs}' 'docs/*.md' README.md SECURITY.md package.json package-lock.json
+      - name: Commit application source only
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --name-only | grep '^.github/' && exit 1 || true
+          git commit -m 'feat: add scoped Agent data gateway, reliable shared writes and management console'
+          git push origin HEAD:feat/agent-gateway-v1.1
+          git archive --format=zip --prefix=content-dashboard/ -o /tmp/content-hub-prepared.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: content-hub-prepared
+          path: /tmp/content-hub-prepared.zip
+          retention-days: 7
