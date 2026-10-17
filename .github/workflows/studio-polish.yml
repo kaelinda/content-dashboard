@@ -1,0 +1,120 @@
+name: Refine reviewed Studio details
+on:
+  push:
+    branches: ['feat/studio-ui-v1-2']
+    paths: ['.github/workflows/studio-polish.yml']
+permissions:
+  contents: write
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/studio-ui-v1-2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply narrow screenshot-reviewed changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib
+          def checked(path,sha):
+              p=Path(path); b=p.read_bytes()
+              assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha,path
+              return p,b.decode()
+          p,s=checked('src/app/studio.css','92d41fa40623e20042790069dae0abecb0905197')
+          s,n=re.subn(r'font-size:\s*(?:7|8|9|10|11)px\b','font-size: 12px',s)
+          assert n==186,n
+          s+='''
+          /* Readability pass after real viewport screenshot review. */
+          .studio-table { min-width: 0; }
+          .studio-table td { overflow-wrap: anywhere; }
+          .studio-table-link { max-width:100%; overflow-wrap:anywhere; }
+          .studio-identity > span:last-child { min-width:0; }
+          .studio-panel-title h2 { font-size:16px; }
+          .studio-identity strong, .studio-grants-table .studio-identity strong { font-size:13px; }
+          .studio-heading p, .section-heading p { font-size:14px; }
+          .sidebar nav button { font-size:14px; }
+          .metric-copy > span { font-size:13px; }
+          .studio-file-copy h3 { font-size:13px; }
+          .studio-story h3 { font-size:14px; }
+          .studio-table.agent-table { table-layout:fixed; }
+          .studio-table.agent-table th:first-child { width:56%; }
+          .studio-table.agent-table th:last-child { width:23%; }
+          @media (max-width:760px) {
+            .studio-table.agent-table th, .studio-table.agent-table td { padding-left:5px; padding-right:5px; }
+            .studio-grants-table th:nth-child(1) { width:42%; }
+            .studio-grants-table th:nth-child(2) { width:26%; }
+            .studio-grants-table th:nth-child(3) { width:32%; }
+            .studio-grants-table .button { white-space:normal; }
+            .studio-grants-table .button svg { display:none; }
+            .studio-grants-table .studio-identity strong { font-size:12px; }
+            .studio-identity strong { overflow-wrap:anywhere; }
+            .studio-heading p { font-size:13px; }
+          }
+          '''
+          p.write_text(s)
+          p,s=checked('src/components/source-explorer.tsx','c2f91f18cd2e716500a91c9811b8828183bb1521')
+          target='            className="studio-capture"\n'
+          assert s.count(target)==1
+          s=s.replace(target,target+'            aria-label={a.title}\n            aria-description={a.sub}\n')
+          p.write_text(s)
+          p,s=checked('tests/e2e/studio.spec.ts','88b48f6ee5f8d80928f40cb828c20781391760f4')
+          s=s.replace('import { readFile }','import { readFile, writeFile }')
+          target='  const sources = [];\n'
+          assert s.count(target)==1
+          s=s.replace(target,'''  // A restarted worker reuses the completed synthetic fixture, not duplicate data.
+            const fixturePath = "test-results/.studio-fixture.json";
+            try {
+              const cached = JSON.parse(await readFile(fixturePath, "utf8"));
+              const existing = await request.get("/api/contents/" + cached.content);
+              if (existing.ok()) { Object.assign(refs, cached); return; }
+            } catch { /* No fixture in this isolated database yet. */ }
+          '''+target)
+          target='''    origin,
+            );
+          });
+
+          test("overview'''
+          replacement='''    origin,
+            );
+            await writeFile(fixturePath, JSON.stringify(refs));
+          });
+
+          test("overview'''
+          assert s.count(target)==1
+          s=s.replace(target,replacement)
+          target='''    await shot(
+                page,
+                label === "Agent 控制台"'''
+          replacement='''    if (label === "Agent 控制台") {
+                await expect(page.locator(".studio-grants-table tbody tr")).toHaveCount(3);
+                const table = page.locator(".studio-grants-table");
+                expect(await table.evaluate(el => el.getBoundingClientRect().width <= el.parentElement!.clientWidth)).toBe(true);
+                expect(await table.locator("tbody td").first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
+              }
+              await shot(
+                page,
+                label === "Agent 控制台"'''
+          assert s.count(target)==1
+          s=s.replace(target,replacement)
+          p.write_text(s)
+          p=Path('.github/workflows/verify.yml');s=p.read_text()
+          target='      - run: npx playwright install --with-deps chromium\n'
+          assert s.count(target)==1
+          s=s.replace(target,target+'      - name: Install CJK fonts for faithful Chinese UI acceptance\n        run: sudo apt-get install -y fonts-noto-cjk\n')
+          p.write_text(s)
+          PY
+      - run: npm ci --no-audit
+      - run: npx --yes prettier@3.6.2 --write src/app/studio.css src/components/source-explorer.tsx tests/e2e/studio.spec.ts
+      - run: npm run typecheck
+      - name: Commit reviewed source and acceptance changes
+        run: |
+          git config user.name 'Content Hub Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app/studio.css src/components/source-explorer.tsx tests/e2e/studio.spec.ts .github/workflows/verify.yml
+          git commit -m 'fix: make Studio typography readable and tables fit phone viewports'
+          git push origin HEAD:feat/studio-ui-v1-2
