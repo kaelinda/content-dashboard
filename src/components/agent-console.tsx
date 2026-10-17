@@ -9,8 +9,22 @@ import {
   RefreshCw,
   FileCode2,
   ArrowUpRight,
+  Folder,
+  Activity,
+  X,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import { Modal, Spinner, type Notice, formatDate } from "./ui";
+import {
+  CopyButton,
+  PageHeading,
+  PanelHeading,
+  QueryInput,
+  Metric,
+  RequestTable,
+  safeDate,
+} from "./studio/shared";
 type Agent = {
   id: string;
   name: string;
@@ -83,6 +97,12 @@ export function AgentConsole({ notice }: { notice: Notice }) {
   const [secret, setSecret] = useState(""),
     [confirm, setConfirm] = useState<Agent | null>(null),
     [projectOpen, setProjectOpen] = useState(false);
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedId, setSelectedId] = useState("");
+  const [detailTab, setDetailTab] = useState("permissions");
+  const [mobileDetail, setMobileDetail] = useState(false);
   const refresh = useCallback(async () => {
     try {
       setData(await request<Admin>("admin"));
@@ -141,64 +161,46 @@ export function AgentConsole({ notice }: { notice: Notice }) {
       setBusy(false);
     }
   }
+  const visible = (data?.agents ?? []).filter(
+    (a) =>
+      (projectFilter === "all" || a.project_ids.includes(projectFilter)) &&
+      (statusFilter === "all" ||
+        (statusFilter === "active" ? a.active : !a.active)) &&
+      `${a.name} ${a.id}`
+        .toLocaleLowerCase()
+        .includes(query.toLocaleLowerCase()),
+  );
+  const selected = visible.find((a) => a.id === selectedId) ?? visible[0];
+  const selectedRequests =
+    data?.requests.filter((r) => r.principal_id === selected?.id) ?? [];
+  const activeProject = data?.projects.find((p) => p.id === projectFilter);
   return (
-    <div className="agent-console">
-      <header className="agent-header">
-        <div>
-          <div className="eyebrow">AGENT DATA GATEWAY</div>
-          <h1>让 Agent 协作，让数据有据。</h1>
-          <p>同一份资料，跨工具复用。你决定谁能读取、写入和检查。</p>
-        </div>
-        <button
-          className="button primary"
-          onClick={() => setOpen(true)}
-          disabled={!data}
-        >
-          <Plus size={17} />
-          连接新 Agent
-        </button>
-      </header>
-      <div className="agent-principles">
-        <span>
-          <ShieldCheck size={16} />
-          项目与操作双重授权
-        </span>
-        <span>重试不重复写入</span>
-        <span>正文与产物保留版本</span>
-        <span>不向模型返回平台凭证</span>
-      </div>
-      <section className="panel agent-quickstart">
-        <div>
-          <h2>
-            <FileCode2 size={19} /> 从一个统一入口开始
-          </h2>
-          <p>
-            先读取 capabilities，确认项目和权限。HTTP 与 MCP
-            的写入会经过同一套校验。
-          </p>
-          <code>GET /api/v1/capabilities</code>
-        </div>
-        <div className="agent-links">
-          <a
-            className="button secondary"
-            href="/docs/agents"
-            target="_blank"
-            rel="noreferrer"
-          >
-            接入指南
-            <ArrowUpRight size={15} />
-          </a>
-          <a
-            className="button secondary"
-            href="/openapi.json"
-            target="_blank"
-            rel="noreferrer"
-          >
-            OpenAPI
-            <ArrowUpRight size={15} />
-          </a>
-        </div>
-      </section>
+    <div className="agent-console studio-agents">
+      <PageHeading
+        eyebrow="PROJECTS & ACCESS"
+        title="项目与权限管理"
+        description="连接你的 Agent，划定项目与操作边界。数据私有，协作有序。"
+        actions={
+          <>
+            <button
+              className="button secondary"
+              onClick={() => setProjectOpen(true)}
+              disabled={!data}
+            >
+              <Folder size={16} />
+              新建项目
+            </button>
+            <button
+              className="button primary"
+              onClick={() => setOpen(true)}
+              disabled={!data}
+            >
+              <Plus size={17} />
+              连接新 Agent
+            </button>
+          </>
+        }
+      />
       {error && (
         <div className="inline-error" role="alert">
           {error}
@@ -207,167 +209,451 @@ export function AgentConsole({ notice }: { notice: Notice }) {
           </button>
         </div>
       )}
-      {!data && !error ? (
-        <Spinner />
-      ) : (
-        data && (
-          <>
-            <section className="panel agent-section">
-              <div className="panel-heading">
-                <h2>
-                  <Bot size={19} /> Agent 身份{" "}
-                  <span className="agent-count">{data.agents.length}</span>
-                </h2>
-                <button className="text-button" onClick={() => void refresh()}>
-                  <RefreshCw size={15} />
-                  刷新
-                </button>
-              </div>
-              <p className="muted">
-                这里显示授权状态，不代表 Agent
-                正在运行。一个身份可以持有多个令牌，幂等记录不随令牌轮换丢失。
-              </p>
-              {!data.agents.length ? (
-                <div className="agent-empty">
-                  <Bot size={32} />
-                  <h3>从第一个调研或写作 Agent 开始</h3>
-                  <p>
-                    先选择它能访问的项目，再开放最少必要的权限。不会自动连接任何外部账号。
-                  </p>
-                  <button
-                    className="button secondary"
-                    onClick={() => setOpen(true)}
-                  >
-                    创建 Agent 身份
-                  </button>
-                </div>
-              ) : (
-                <div className="agent-list">
-                  {data.agents.map((a) => (
-                    <article key={a.id} className="agent-card">
-                      <div className="agent-card-title">
-                        <span className="agent-avatar">
-                          <Bot size={22} />
-                        </span>
-                        <div>
-                          <h3>{a.name}</h3>
-                          <small className="mono">{a.id}</small>
-                        </div>
-                        <span
-                          className={
-                            "agent-status " +
-                            (a.active ? "enabled" : "disabled")
-                          }
-                        >
-                          {a.active ? "已授权" : "已停用"}
-                        </span>
-                      </div>
-                      <p className="agent-projects">
-                        {a.project_ids
-                          .map(
-                            (id) =>
-                              data.projects.find((p) => p.id === id)?.name ??
-                              id,
-                          )
-                          .join(" · ")}
-                      </p>
-                      <div className="agent-scopes">
-                        {a.scopes.map((s) => (
-                          <span key={s}>{scopeLabels[s] ?? s}</span>
-                        ))}
-                      </div>
-                      <div className="agent-card-actions">
-                        <button
-                          className="button secondary"
-                          disabled={busy || !a.active}
-                          onClick={() => void issue(a)}
-                        >
-                          <KeyRound size={15} />
-                          生成令牌
-                        </button>
-                        <button
-                          className="text-button"
-                          onClick={() => setConfirm(a)}
-                        >
-                          {a.active ? "停用访问" : "重新启用"}
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-            <section className="panel agent-section">
-              <div className="panel-heading">
-                <h2>项目边界</h2>
-                <button
-                  className="text-button"
-                  onClick={() => setProjectOpen(true)}
+      {!data && !error && (
+        <div className="studio-loading">
+          <Spinner />
+          正在读取项目与访问授权…
+        </div>
+      )}
+      {data && (
+        <div
+          className={`studio-agent-layout ${mobileDetail ? "detail-open" : ""}`}
+        >
+          <aside className="studio-panel project-directory">
+            <PanelHeading title="项目空间" count={data.projects.length} />
+            <button
+              className={`studio-project-card ${projectFilter === "all" ? "selected" : ""}`}
+              aria-pressed={projectFilter === "all"}
+              onClick={() => setProjectFilter("all")}
+            >
+              <span className="studio-icon small tone-green">
+                <Folder size={20} />
+              </span>
+              <span>
+                <strong>全部项目</strong>
+                <small>{data.agents.length} 个 Agent 身份</small>
+              </span>
+            </button>
+            {data.projects.map((p, i) => (
+              <button
+                className={`studio-project-card ${projectFilter === p.id ? "selected" : ""}`}
+                key={p.id}
+                aria-pressed={projectFilter === p.id}
+                onClick={() => setProjectFilter(p.id)}
+              >
+                <span
+                  className={`studio-icon small tone-${["green", "violet", "blue", "amber"][i % 4]}`}
                 >
-                  <Plus size={15} />
-                  新建项目
+                  <Folder size={20} />
+                </span>
+                <span>
+                  <strong>{p.name}</strong>
+                  <small>
+                    {
+                      data.agents.filter((a) => a.project_ids.includes(p.id))
+                        .length
+                    }{" "}
+                    个获准身份
+                  </small>
+                  <small className="mono">
+                    {p.id === "default" ? "默认项目" : p.id.slice(0, 12) + "…"}
+                  </small>
+                </span>
+                <ArrowRight size={14} />
+              </button>
+            ))}
+            <div className="studio-project-note">
+              <ShieldCheck size={19} />
+              <p>项目不会自动共享。创建身份时，仅授予必要范围。</p>
+            </div>
+            <a
+              href="/docs/agents"
+              className="studio-inline-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              接入指南 <ArrowUpRight size={15} />
+            </a>
+          </aside>
+          <div className="studio-agent-main">
+            <section className="studio-panel project-summary">
+              <div className="project-summary-title">
+                <span className="studio-icon tone-green">
+                  <Folder size={26} />
+                </span>
+                <div>
+                  <h2>{activeProject?.name ?? "你的 Agent 工作空间"}</h2>
+                  <p>独立身份 · 最小授权 · 可追溯的读写</p>
+                </div>
+                <button
+                  className="icon-button"
+                  aria-label="刷新"
+                  title="刷新"
+                  onClick={() => void refresh()}
+                >
+                  <RefreshCw size={17} />
                 </button>
               </div>
-              <div className="agent-project-list">
-                {data.projects.map((p) => (
-                  <div key={p.id}>
-                    <strong>{p.name}</strong>
-                    <code>{p.id}</code>
-                  </div>
-                ))}
+              <div className="project-summary-stats">
+                <div>
+                  <strong>{visible.length}</strong>
+                  <span>筛选后身份</span>
+                </div>
+                <div>
+                  <strong>{visible.filter((a) => a.active).length}</strong>
+                  <span>已授权</span>
+                </div>
+                <div>
+                  <strong>{visible.filter((a) => !a.active).length}</strong>
+                  <span>已停用</span>
+                </div>
+                <div>
+                  <strong>{data.projects.length}</strong>
+                  <span>项目空间</span>
+                </div>
               </div>
             </section>
-            <section className="panel agent-section">
-              <div className="panel-heading">
-                <h2>最近调用</h2>
-                <span className="muted">最近 30 条 · 不记录正文和令牌</span>
+            <section className="studio-panel">
+              <PanelHeading title="Agent 列表" count={visible.length} />
+              <div className="studio-browser-toolbar">
+                <QueryInput
+                  label="搜索 Agent"
+                  placeholder="搜索 Agent 名称或 ID…"
+                  value={query}
+                  onChange={setQuery}
+                />
+                <select
+                  aria-label="Agent 授权状态筛选"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">全部状态</option>
+                  <option value="active">已授权</option>
+                  <option value="inactive">已停用</option>
+                </select>
               </div>
-              {data.requests.length ? (
-                <div className="agent-table-wrap">
-                  <table className="agent-table">
+              {visible.length ? (
+                <div className="studio-table-scroll">
+                  <table className="studio-table studio-agent-table">
                     <thead>
                       <tr>
-                        <th>操作 / 请求 ID</th>
-                        <th>身份</th>
-                        <th>结果</th>
-                        <th>耗时</th>
+                        <th>Agent 名称</th>
+                        <th>项目 / 权限</th>
+                        <th>授权</th>
+                        <th>操作</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.requests.map((r) => (
-                        <tr key={r.request_id}>
+                      {visible.map((a, i) => (
+                        <tr
+                          key={a.id}
+                          className={`agent-card ${selected?.id === a.id ? "selected" : ""}`}
+                        >
                           <td>
-                            <strong>{r.operation}</strong>
-                            <small className="mono">{r.request_id}</small>
-                            <small>{formatDate(r.created_at)}</small>
+                            <button
+                              className="studio-identity"
+                              aria-pressed={selected?.id === a.id}
+                              onClick={() => {
+                                setSelectedId(a.id);
+                                setMobileDetail(true);
+                              }}
+                            >
+                              <span
+                                className={`studio-icon small tone-${["green", "blue", "violet", "amber"][i % 4]}`}
+                              >
+                                <Bot size={20} />
+                              </span>
+                              <span>
+                                <strong>{a.name}</strong>
+                                <small className="mono">
+                                  {a.id.slice(0, 12)}…
+                                </small>
+                              </span>
+                            </button>
                           </td>
                           <td>
-                            {data.agents.find((a) => a.id === r.principal_id)
-                              ?.name ?? r.principal_id}
+                            <div className="studio-chip-wrap">
+                              {a.project_ids.slice(0, 2).map((id) => (
+                                <span className="studio-chip blue" key={id}>
+                                  {data.projects.find((p) => p.id === id)
+                                    ?.name ?? id}
+                                </span>
+                              ))}
+                            </div>
+                            <small>
+                              {a.scopes.length} 项操作权限
+                              {a.project_ids.length > 2
+                                ? ` · ${a.project_ids.length} 个项目`
+                                : ""}
+                            </small>
                           </td>
                           <td>
                             <span
-                              className={
-                                r.status < 400 ? "request-ok" : "request-failed"
-                              }
+                              className={`studio-status ${a.active ? "enabled" : "disabled"}`}
                             >
-                              {r.status < 400 ? "成功" : (r.code ?? "失败")}
+                              <i />
+                              {a.active ? "已授权" : "已停用"}
                             </span>
                           </td>
-                          <td>{r.duration_ms} ms</td>
+                          <td>
+                            <button
+                              className="icon-button"
+                              aria-label="生成令牌"
+                              title="生成令牌"
+                              disabled={busy || !a.active}
+                              onClick={() => void issue(a)}
+                            >
+                              <KeyRound size={16} />
+                            </button>
+                            <button
+                              className="text-button"
+                              onClick={() => setConfirm(a)}
+                            >
+                              {a.active ? "停用访问" : "重新启用"}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="agent-empty">
-                  还没有 Agent 业务调用。接入后可在此核查请求结果。
-                </p>
+                <div className="agent-empty">
+                  <Bot size={32} />
+                  <h3>
+                    {data.agents.length
+                      ? "没有符合筛选的 Agent"
+                      : "从第一个调研或写作 Agent 开始"}
+                  </h3>
+                  <p>
+                    {data.agents.length
+                      ? "调整名称、项目或授权状态筛选。"
+                      : "先选择项目，再开放最少必要的权限。不会自动连接外部账号。"}
+                  </p>
+                  <button
+                    className="button secondary"
+                    onClick={() => {
+                      if (data.agents.length) {
+                        setProjectFilter("all");
+                        setQuery("");
+                        setStatusFilter("all");
+                      } else setOpen(true);
+                    }}
+                  >
+                    {data.agents.length ? "清除 Agent 筛选" : "创建 Agent 身份"}
+                  </button>
+                </div>
               )}
+              <div className="studio-panel-foot">
+                <ShieldCheck size={14} />
+                这里显示访问授权，不代表 Agent 正在运行。
+              </div>
             </section>
-          </>
-        )
+            <section className="studio-panel">
+              <PanelHeading
+                title="最近调用"
+                action={<span className="studio-caption">最近最多 30 条</span>}
+              />
+              <RequestTable requests={data.requests} agents={data.agents} />
+              <div className="studio-panel-foot">
+                仅记录诊断元信息，不记录正文和令牌。不是全量访问审计。
+              </div>
+            </section>
+          </div>
+          <aside
+            className="studio-panel studio-inspector agent-inspector"
+            aria-label="Agent 权限详情"
+          >
+            <div className="studio-inspector-head">
+              <div>
+                <span className="studio-eyebrow">ACCESS CONTROL</span>
+                <h2>权限与接入配置</h2>
+              </div>
+              <button
+                className="icon-button mobile-detail-close"
+                aria-label="返回 Agent 列表"
+                onClick={() => setMobileDetail(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="studio-filter-tabs">
+              <button
+                className={detailTab === "permissions" ? "active" : ""}
+                aria-pressed={detailTab === "permissions"}
+                onClick={() => setDetailTab("permissions")}
+              >
+                权限范围
+              </button>
+              <button
+                className={detailTab === "connect" ? "active" : ""}
+                aria-pressed={detailTab === "connect"}
+                onClick={() => setDetailTab("connect")}
+              >
+                接入配置
+              </button>
+            </div>
+            <div className="studio-inspector-body">
+              {selected ? (
+                <>
+                  <div className="selected-agent-identity">
+                    <span className="studio-icon tone-green">
+                      <Bot size={23} />
+                    </span>
+                    <div>
+                      <h3>{selected.name}</h3>
+                      <span
+                        className={`studio-status ${selected.active ? "enabled" : "disabled"}`}
+                      >
+                        <i />
+                        {selected.active ? "已授权" : "已停用"}
+                      </span>
+                    </div>
+                  </div>
+                  {detailTab === "permissions" ? (
+                    <>
+                      <section className="detail-section">
+                        <h3>允许的操作</h3>
+                        <div className="permission-list">
+                          {data.scopes.map((scope) => (
+                            <div
+                              key={scope}
+                              className={
+                                selected.scopes.includes(scope)
+                                  ? "granted"
+                                  : "not-granted"
+                              }
+                            >
+                              <span className="permission-check">
+                                {selected.scopes.includes(scope) ? (
+                                  <Check size={14} />
+                                ) : (
+                                  <X size={13} />
+                                )}
+                              </span>
+                              <span>
+                                <strong>{scopeLabels[scope] ?? scope}</strong>
+                                <small className="mono">{scope}</small>
+                              </span>
+                              <span>
+                                {selected.scopes.includes(scope)
+                                  ? "已授权"
+                                  : "未授权"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="studio-caption">
+                          此处只读。变更项目或操作范围，请建立新身份并停用旧身份；不静默扩大已有令牌权限。
+                        </p>
+                      </section>
+                      <section className="detail-section">
+                        <h3>项目访问范围</h3>
+                        <div className="studio-chip-wrap">
+                          {selected.project_ids.map((id) => (
+                            <span key={id} className="studio-chip blue">
+                              <Folder size={13} />
+                              {data.projects.find((p) => p.id === id)?.name ??
+                                id}
+                            </span>
+                          ))}
+                        </div>
+                      </section>
+                    </>
+                  ) : (
+                    <>
+                      <section className="detail-section">
+                        <h3>独立 Agent 身份</h3>
+                        <div className="copy-line">
+                          <code>{selected.id}</code>
+                          <CopyButton
+                            value={selected.id}
+                            label="复制 Agent ID"
+                            notice={notice}
+                          />
+                        </div>
+                        <p>令牌由执行器安全注入，不写入模型提示词或正文。</p>
+                        <button
+                          className="button primary full"
+                          disabled={busy || !selected.active}
+                          onClick={() => void issue(selected)}
+                        >
+                          <KeyRound size={16} />
+                          生成独立令牌
+                        </button>
+                        <p className="studio-caption">
+                          新令牌不会自动撤销旧令牌。单独撤销请前往“连接与设置”。
+                        </p>
+                      </section>
+                      <section className="detail-section">
+                        <h3>统一连接入口</h3>
+                        <div className="endpoint-row">
+                          <span>REST</span>
+                          <code>/api/v1</code>
+                        </div>
+                        <div className="endpoint-row">
+                          <span>MCP</span>
+                          <code>/mcp</code>
+                        </div>
+                        <div className="endpoint-row">
+                          <span>发现</span>
+                          <code>/api/v1/capabilities</code>
+                        </div>
+                        <a
+                          className="studio-inline-link"
+                          href="/docs/agents"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          OAuth 与安全接入说明 <ArrowUpRight size={15} />
+                        </a>
+                        <a
+                          className="studio-inline-link"
+                          href="/openapi.json"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          查看 OpenAPI 契约 <ArrowUpRight size={15} />
+                        </a>
+                      </section>
+                    </>
+                  )}
+                  <section className="detail-section">
+                    <h3>最近活动</h3>
+                    {selectedRequests.length ? (
+                      <>
+                        <strong className="mono">
+                          {selectedRequests[0].operation}
+                        </strong>
+                        <p>
+                          {safeDate(selectedRequests[0].created_at)} ·{" "}
+                          {selectedRequests[0].status < 400
+                            ? "请求成功"
+                            : "请求失败"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="muted">
+                        最近 30 条调用中没有该身份记录。不代表从未调用。
+                      </p>
+                    )}
+                  </section>
+                  <div className="studio-security-note">
+                    <ShieldCheck size={20} />
+                    <div>
+                      <strong>凭证留在执行器，数据留在 Hub。</strong>
+                      <p>本平台不向模型返回平台凭证，也不会自动发文。</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="studio-empty-compact">
+                  创建或选择一个身份，查看它的实际项目与操作权限。
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       )}
       {open && data && (
         <Modal title="创建 Agent 身份" onClose={() => !busy && setOpen(false)}>

@@ -28,6 +28,10 @@ npm run dev
 
 完整变量、加载顺序、特殊字符与部署区别见 [ENVIRONMENT.md](docs/ENVIRONMENT.md)。
 
+## V1.2 · Sage Studio 界面
+
+按照确认的深绿／暖白效果图实现工作台、资料采集中心、产物与发布中心、项目权限管理和内容编辑样式。筛选、详情、下载、授权及保存都使用原有真实服务；不伪造增长、在线状态或自动发布。设计与实现边界见 [STUDIO_UI.md](docs/STUDIO_UI.md)。
+
 ## V1.1 · Agent-first 升级
 
 **Agent 生产和使用数据，Hub 保存版本与授权，人通过网页检查和纠错。**
