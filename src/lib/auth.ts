@@ -1,3 +1,4 @@
+import { SCOPES } from "./agent/scopes.ts";
 import { randomUUID } from "node:crypto";
 import { database, type Database } from "./db.ts";
 import { HubError } from "./domain.ts";
@@ -78,6 +79,7 @@ export async function authenticate(
   write = false,
   ownerOnly = false,
   transport: "api" | "mcp" = "api",
+  gateway = false,
 ): Promise<Actor> {
   const authorization = request.headers.get("authorization");
   const bearer = authorization?.startsWith("Bearer ")
@@ -114,8 +116,24 @@ export async function authenticate(
   if (ownerOnly && !owner)
     throw new HubError("此操作只能由网页登录的所有者执行", 403);
   if (write && owner) requireOrigin(request);
+  if (!gateway && record.meta.agent_id)
+    throw new HubError("此 Agent 令牌只能使用 /api/v1 或 /mcp", 403);
+  if (
+    !gateway &&
+    !owner &&
+    !record.meta.agent_id &&
+    (
+      await (
+        await database()
+      ).query("SELECT id FROM projects WHERE id<>'default' LIMIT 1")
+    ).length
+  )
+    throw new HubError(
+      "多项目工作区已关闭旧版全库接口，请使用 /api/v1 的默认项目或创建受限 Agent 令牌",
+      403,
+    );
   const needed = write ? WRITE : READ;
-  if (!owner && !record.scopes.includes(needed))
+  if (!gateway && !owner && !record.scopes.includes(needed))
     throw new HubError("令牌权限不足", 403);
   return {
     name: owner ? "owner" : `${record.kind}:${record.label}`,
@@ -136,7 +154,12 @@ export async function rateLimit(key: string, max: number, seconds: number) {
     Date.now() - 86400000,
   ]);
 }
-export type OAuthClient = { id: string; name: string; redirect_uris: string[] };
+export type OAuthClient = {
+  id: string;
+  name: string;
+  redirect_uris: string[];
+  agent_id?: string;
+};
 export function oauthClients(): OAuthClient[] {
   const raw = JSON.parse(process.env.OAUTH_CLIENTS_JSON || "[]") as unknown;
   if (!Array.isArray(raw)) throw new HubError("OAuth 配置无效", 503);
@@ -163,7 +186,18 @@ export function oauthClients(): OAuthClient[] {
       )
         throw new HubError("OAuth 回调配置无效", 503);
     }
-    return { id: c.id, name: c.name, redirect_uris: c.redirect_uris };
+    if (
+      c.agent_id !== undefined &&
+      (typeof c.agent_id !== "string" ||
+        !/^[A-Za-z0-9_-]{1,64}$/.test(c.agent_id))
+    )
+      throw new HubError("OAuth Agent ID 无效", 503);
+    return {
+      id: c.id,
+      name: c.name,
+      redirect_uris: c.redirect_uris,
+      ...(c.agent_id ? { agent_id: c.agent_id } : {}),
+    };
   });
 }
 export function validateAuthorization(params: URLSearchParams) {
@@ -179,12 +213,27 @@ export function validateAuthorization(params: URLSearchParams) {
     throw new HubError("必须使用授权码和 PKCE S256");
   if (params.get("resource") !== origin() + "/mcp")
     throw new HubError("OAuth resource 不匹配");
-  if (params.get("scope") && params.get("scope") !== READ)
-    throw new HubError("MCP 目前仅开放 content:read");
+  const scopes = [
+    ...new Set(
+      (params.get("scope") || (client.agent_id ? "" : READ))
+        .split(" ")
+        .filter(Boolean),
+    ),
+  ];
+  if (
+    !scopes.length ||
+    scopes.some((s) =>
+      client.agent_id ? !(SCOPES as readonly string[]).includes(s) : s !== READ,
+    )
+  )
+    throw new HubError(
+      "请求了未支持的 OAuth 权限；旧客户端仅支持 content:read",
+    );
   const state = params.get("state") || "";
   if (state.length > 2048) throw new HubError("state 过长");
   return {
     client,
+    scopes,
     redirect,
     challenge: params.get("code_challenge")!,
     state,

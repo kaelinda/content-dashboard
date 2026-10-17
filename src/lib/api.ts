@@ -458,25 +458,51 @@ export async function handle(request: Request): Promise<Response> {
               text(object(await readJson(request)).query, "授权请求", 12000),
             );
       const parsed = validateAuthorization(params);
+      let grantedProjects: string[] = [];
+      if (parsed.client.agent_id) {
+        const [agent] = await (
+          await database()
+        ).query<{ active: boolean; scopes: string[]; project_ids: string[] }>(
+          "SELECT * FROM agents WHERE id=$1",
+          [parsed.client.agent_id],
+        );
+        if (
+          !agent?.active ||
+          parsed.scopes.some((s) => !agent.scopes.includes(s))
+        )
+          throw new HubError("OAuth 请求超出已配置 Agent 的授权范围", 403);
+        grantedProjects = agent.project_ids;
+      }
       if (method === "GET")
         return json({
           name: parsed.client.name,
-          scope: READ,
+          scope: parsed.scopes.join(" "),
+          project_ids: grantedProjects.length ? grantedProjects : ["default"],
+          read_only: !parsed.scopes.some((s) => s.endsWith(":write")),
           redirect_uri: parsed.redirect,
         });
       if (method === "POST") {
-        const code = await issueToken("code", parsed.client.id, [READ], 120, {
-          client_id: parsed.client.id,
-          redirect_uri: parsed.redirect,
-          code_challenge: parsed.challenge,
-          resource: parsed.resource,
-        });
+        const code = await issueToken(
+          "code",
+          parsed.client.id,
+          parsed.scopes,
+          120,
+          {
+            ...(parsed.client.agent_id
+              ? { agent_id: parsed.client.agent_id }
+              : {}),
+            client_id: parsed.client.id,
+            redirect_uri: parsed.redirect,
+            code_challenge: parsed.challenge,
+            resource: parsed.resource,
+          },
+        );
         const target = new URL(parsed.redirect);
         target.searchParams.set("code", code.token);
         if (parsed.state) target.searchParams.set("state", parsed.state);
         await event(await database(), "oauth.approved", "owner", code.id, {
           client: parsed.client.id,
-          scope: READ,
+          scope: parsed.scopes.join(" "),
         });
         return json({ redirect: target.href });
       }

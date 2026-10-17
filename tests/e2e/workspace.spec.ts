@@ -166,13 +166,11 @@ test.describe("Real creator workflows", () => {
     })
       .png()
       .toBuffer();
-    await page
-      .locator('input[type="file"]')
-      .setInputFiles({
-        name: "acceptance-image.png",
-        mimeType: "image/png",
-        buffer,
-      });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "acceptance-image.png",
+      mimeType: "image/png",
+      buffer,
+    });
     await expect(
       page.locator(".asset-card").filter({ hasText: "acceptance-image.png" }),
     ).toBeVisible();

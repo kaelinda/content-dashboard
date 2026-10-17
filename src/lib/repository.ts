@@ -29,14 +29,64 @@ export async function event(
     "INSERT INTO events(type,actor,subject_id,payload) VALUES($1,$2,$3,$4::jsonb)",
     [type, actor, id, JSON.stringify(payload)],
   );
+  const kind = type.split(".")[0];
+  let project: string | undefined;
+  if (["content", "source", "asset"].includes(kind)) {
+    const table = { content: "contents", source: "sources", asset: "assets" }[
+      kind as "content" | "source" | "asset"
+    ];
+    project = (
+      await tx.query<{ project_id: string }>(
+        `SELECT project_id FROM ${table} WHERE id=$1`,
+        [id],
+      )
+    )[0]?.project_id;
+  } else if (kind === "artifact") {
+    project = (
+      await tx.query<{ project_id: string }>(
+        "SELECT c.project_id FROM artifacts a JOIN contents c ON c.id=a.content_id WHERE a.id=$1",
+        [id],
+      )
+    )[0]?.project_id;
+  }
+  if (project && id)
+    await recordChange(
+      tx,
+      project,
+      kind,
+      id,
+      type,
+      actor,
+      typeof payload.version === "number" ? payload.version : null,
+    );
 }
+export async function recordChange(
+  tx: Database,
+  project: string,
+  kind: string,
+  id: string,
+  operation: string,
+  actor: string,
+  version: number | null = null,
+) {
+  const [clock] = await tx.query<{ value: string }>(
+    "UPDATE agent_change_clock SET value=value+1 WHERE singleton=true RETURNING value",
+  );
+  await tx.query(
+    "INSERT INTO agent_changes(id,project_id,kind,resource_id,version,operation,actor) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [clock.value, project, kind, id, version, operation, actor],
+  );
+}
+export type WriteContext = { db?: Database; projectId?: string };
 export async function saveContent(
   value: unknown,
   id?: string,
   actor = "owner",
+  context: WriteContext = {},
 ): Promise<ContentDetail> {
   const input = parseContent(value);
-  const db = await database();
+  const db = context.db ?? (await database());
+  let projectId = context.projectId ?? "default";
   const contentId = id ? validId(id) : randomUUID();
   return db.transaction(async (tx) => {
     let version = 1;
@@ -48,6 +98,9 @@ export async function saveContent(
         [id],
       );
       if (!rows[0]) throw new HubError("内容不存在", 404);
+      projectId = (rows[0] as Content & { project_id: string }).project_id;
+      if (context.projectId && context.projectId !== projectId)
+        throw new HubError("内容不存在", 404);
       if (rows[0].current_version !== input.expected_version)
         throw new HubError(
           "这篇内容已在其他窗口更新。你的编辑尚未覆盖服务器，请复制编辑后重新打开。",
@@ -57,13 +110,21 @@ export async function saveContent(
     }
     for (const sourceId of input.source_ids)
       if (
-        !(await tx.query("SELECT id FROM sources WHERE id=$1", [sourceId]))[0]
+        !(
+          await tx.query(
+            "SELECT id FROM sources WHERE id=$1 AND project_id=$2",
+            [sourceId, projectId],
+          )
+        )[0]
       )
         throw new HubError("关联来源不存在");
     for (const block of input.blocks.filter((b) => b.type === "image"))
       if (
         !(
-          await tx.query("SELECT id FROM assets WHERE id=$1", [block.asset_id])
+          await tx.query(
+            "SELECT id FROM assets WHERE id=$1 AND project_id=$2",
+            [block.asset_id, projectId],
+          )
         )[0]
       )
         throw new HubError("图片素材不存在");
@@ -74,8 +135,15 @@ export async function saveContent(
     ].join("\n");
     if (!id)
       await tx.query(
-        "INSERT INTO contents(id,title,status,tags,current_version,search_text) VALUES($1,$2,$3,$4,1,$5)",
-        [contentId, input.title, input.status, input.tags, searchable],
+        "INSERT INTO contents(id,title,status,tags,current_version,search_text,project_id) VALUES($1,$2,$3,$4,1,$5,$6)",
+        [
+          contentId,
+          input.title,
+          input.status,
+          input.tags,
+          searchable,
+          projectId,
+        ],
       );
     else
       await tx.query(
@@ -175,13 +243,15 @@ export async function saveSource(
     images?: { asset_id: string; origin_url: string; alt: string }[];
   },
   actor = "owner",
+  context: WriteContext = {},
 ): Promise<Source> {
   const hash = await putBlob(bytes);
-  const db = await database();
+  const db = context.db ?? (await database());
+  const projectId = context.projectId ?? "default";
   let id = randomUUID() as string;
   await db.transaction(async (tx) => {
     const inserted = await tx.query<Source>(
-      "INSERT INTO sources(id,title,original_url,sha256,markdown,mime,trust_level,meta) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb) ON CONFLICT(sha256) DO NOTHING RETURNING *",
+      "INSERT INTO sources(id,title,original_url,sha256,markdown,mime,trust_level,meta,project_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) ON CONFLICT(project_id,sha256) DO NOTHING RETURNING *",
       [
         id,
         text(input.title, "标题"),
@@ -191,11 +261,15 @@ export async function saveSource(
         input.mime,
         input.trust ?? "medium",
         JSON.stringify(input.meta ?? {}),
+        projectId,
       ],
     );
     if (!inserted[0])
       id = (
-        await tx.query<Source>("SELECT * FROM sources WHERE sha256=$1", [hash])
+        await tx.query<Source>(
+          "SELECT * FROM sources WHERE sha256=$1 AND project_id=$2",
+          [hash, projectId],
+        )
       )[0].id;
     if (input.url)
       await tx.query(
@@ -215,7 +289,7 @@ export async function saveSource(
       { title: input.title, sha256: hash },
     );
   });
-  return sourceById(id);
+  return (await db.query<Source>("SELECT * FROM sources WHERE id=$1", [id]))[0];
 }
 export async function saveAsset(
   bytes: Uint8Array,
@@ -250,7 +324,7 @@ export async function saveAsset(
   const db = await database();
   return db.transaction(async (tx) => {
     const rows = await tx.query<Asset>(
-      "INSERT INTO assets(id,sha256,mime,bytes,width,height,name) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(sha256) DO NOTHING RETURNING *",
+      "INSERT INTO assets(id,sha256,mime,bytes,width,height,name) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(project_id,sha256) DO NOTHING RETURNING *",
       [
         randomUUID(),
         hash,
@@ -264,7 +338,10 @@ export async function saveAsset(
     const asset =
       rows[0] ??
       (
-        await tx.query<Asset>("SELECT * FROM assets WHERE sha256=$1", [hash])
+        await tx.query<Asset>(
+          "SELECT * FROM assets WHERE sha256=$1 AND project_id='default'",
+          [hash],
+        )
       )[0];
     await event(tx, "asset.saved", actor, asset.id, {
       name: asset.name,

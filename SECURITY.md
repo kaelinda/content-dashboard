@@ -1,3 +1,5 @@
+> V1.1 更新：多 Agent 的 REST/MCP 契约、项目隔离、显式 OAuth 写授权和兼容边界以 `docs/AGENT_API.md` 为准。下方保留 V1 的基础说明；旧客户端只读限制不代表新受限 Agent 只能读取。
+
 # Security model
 
 Content Hub is a **single-owner private application**, not a multi-tenant service. Possession of an owner session grants access to the complete workspace; scoped agent tokens are intentionally less privileged.
