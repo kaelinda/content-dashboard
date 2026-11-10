@@ -9,3 +9,4 @@ test-results/
 coverage/
 backups/
 .DS_Store
+.claude/settings.local.json
